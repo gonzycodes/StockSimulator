@@ -3,23 +3,28 @@ StockSimulator is a Python-based trading simulator where users receive a virtual
 
 
 
-``` Map Structure
-tradesim/
+
+
+
+
+
+``` ## Map Structure
+stocksimulator/
 │
-├── data/                 # Här sparas portfölj-filer (json) och loggar
+├── data/                 # Stores portfolio files (JSON) and logs
 ├── src/
 │   ├── __init__.py
-│   ├── main.py           # Startpunkten (CLI-menyn)
-│   ├── market.py         # Hämtar data från Yahoo Finance (API)
-│   ├── portfolio.py      # Klasser för Pengar, Innehav, Köp/Sälj-logik
-│   ├── storage.py        # Sparar/Laddar data till JSON
-│   ├── analysis.py       # Pandas-analyser (Räknar ut vinst/förlust)
-│   └── utils.py          # Hjälpfunktioner (Validering av input etc.)
+│   ├── main.py           # Entry point (CLI Menu)
+│   ├── market.py         # Fetches market data from Yahoo Finance (API)
+│   ├── portfolio.py      # Core logic for cash, holdings, and trades
+│   ├── storage.py        # Handles data persistence (Save/Load JSON)
+│   ├── analysis.py       # Analytics using Pandas (Calculates Profit/Loss)
+│   └── utils.py          # Utility functions (Input validation, etc.)
 ├── tests/
 │   ├── test_portfolio.py
 │   ├── test_market.py
 │   └── ...
-├── requirements.txt
-├── README.md
-└── .github/workflows/python-app.yml  # CI/CD
+├── requirements.txt      # List of dependencies
+├── README.md             # Project documentation
+└── .github/workflows/python-app.yml  # CI/CD configuration
 ```
