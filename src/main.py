@@ -1,5 +1,5 @@
 """
-Application entry point for StockSimulator.
+Application entry point for TradeSim.
 
 This module initializes logging, logs app start/exit, and provides a main()
 function that returns a process exit code. It handles the main menu loop.
@@ -52,7 +52,7 @@ def main_menu():
     """
     while True:
         print("\n===============================")
-        print("   Welcome to StockSimulator   ")
+        print("   Welcome to TradeSim         ")
         print("===============================")
         print("1. Start Simulation")
         print("2. Help")
