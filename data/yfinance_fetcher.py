@@ -1,5 +1,5 @@
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 
@@ -31,12 +31,12 @@ def _extract_price_and_time(info: dict) -> tuple[float, str]:
         raise ValueError("No price found in yfinance response (missing 'currentPrice' and 'regularMarketPrice')")
     
     if ts_unix is None:
-        raise ValueError("No timestamp found in yfinance response (missing 'regularMarketTime')")
+        raise ValueError("No timestamp found in)")
 
     try:
         # Convert Unix timestamp → human-readable string in local time
         # Format: 2025-12-31 23:59:59
-        ts_str = datetime.fromtimestamp(ts_unix).strftime("%Y-%m-%d %H:%M:%S")
+        ts_str = datetime.fromtimestamp(ts_unix, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         return float(price), ts_str
     except (TypeError, ValueError) as e:
         # Protect against corrupt or unexpected timestamp values
