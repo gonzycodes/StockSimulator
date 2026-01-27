@@ -48,7 +48,17 @@ def cmd_quote(ticker_raw: str) -> int:
         quote = fetch_latest_quote(ticker)
         
         # Simple output (no advanced formatting required)
-        print (f"{quote.ticker} {quote.price} {quote.timestamp.isoformat()}")
+        price_str = f"{quote.price:.2f}"
+        
+        # Convert stored UTC timestamp to local timezone (OS settings).
+        local_ts = quote.timestamp.astimezone()
+        ts_str = local_ts.strftime("%Y-%m-%d %H:%M:%S %Z")
+        
+        if quote.company_name:
+            print(f"{quote.ticker} ({quote.company_name}) {price_str} (Fetched at: {ts_str})")
+        else:
+            print(f"{quote.ticker} {price_str} (Fetched at: {ts_str})")
+            
         return 0
     
     except ValueError as exc:
