@@ -101,48 +101,35 @@ This section should list any major frameworks/libraries used to bootstrap your p
 This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
-### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
-
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
-
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. **Clone the Repo**
    ```sh
-   git clone https://github.com/github_username/repo_name.git
+   git clone <url>
+   cd <project_map>
    ```
-3. Install NPM packages
+
+2. **Create virtual environment**
+   Windows:
    ```sh
-   npm install
+   python -m venv venv
+   venv\Scripts\activate 
    ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
+  
+   MacOS/Linux:
    ```sh
-   git remote set-url origin github_username/repo_name
-   git remote -v # confirm the changes
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+   When venv is activated you will see (venv) in the prompt.
 
-
+3. **Install dependencies**
+   ```sh  
+   pip install -r requirements.txt
+   ```
 ## Tests
 The project includes automated tests using **PyTest**.
-
-### Installation for tests
-If PyTest is not already installed in your environment:
-```bash
-pip install pytest
-```
 
 ### Running the tests
 From the project root (```StockSimulator/```), with your virtual environment active:
