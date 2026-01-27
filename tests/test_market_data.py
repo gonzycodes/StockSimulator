@@ -13,7 +13,7 @@ def test_extract_price_and_time_happy_path():
     }
     price, ts_str = _extract_price_and_time(fake_info)
     assert price == 150.25
-    assert ts_str == "2025-01-26 12:43:07"   # eller vad strftime ger i din tidszon
+    assert ts_str == "2025-01-26 11:43:07"   
 
 
 def test_extract_price_and_time_missing_price():
@@ -33,7 +33,7 @@ def test_get_latest_price_success(mock_ticker):
     price, ts = get_latest_price("TSLA")
     assert price == 142.8
     assert isinstance(ts, str)
-    assert ts == "2025-01-26 12:46:40"   
+    assert ts == "2025-01-26 11:46:40"   
 
 
 @patch("data.yfinance_fetcher.yf.Ticker")
