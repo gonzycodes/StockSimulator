@@ -67,4 +67,10 @@ def main_menu():
             print("Invalid choice. Please select 1, 2, or 3.")
             
 if __name__ == "__main__":
+    # If arguments are provided, run the CLI commands (e.g. "quote AAPL").
+    if len(sys.argv) > 1:
+        from src.cli import main as cli_main
+        raise SystemExit(cli_main(sys.argv[1:]))
+    
+    # Otherwise start the interactive menu.
     main_menu()  # start the main menu loop
