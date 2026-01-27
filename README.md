@@ -101,10 +101,6 @@ This section should list any major frameworks/libraries used to bootstrap your p
 This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
-### Prerequisites
-
-Project dependencies – install with: pip install -r requirements.txt
-
 ### Installation
 
 1. **Clone the Repo**
@@ -125,7 +121,7 @@ Project dependencies – install with: pip install -r requirements.txt
    python3 -m venv venv
    source venv/bin/activate
    ```
-   
+
    When venv is activated you will see (venv) in the prompt.
 
 3. **Install dependencies**
@@ -134,12 +130,6 @@ Project dependencies – install with: pip install -r requirements.txt
    ```
 ## Tests
 The project includes automated tests using **PyTest**.
-
-### Installation for tests
-If PyTest is not already installed in your environment:
-```bash
-pip install pytest
-```
 
 ### Running the tests
 From the project root (```StockSimulator/```), with your virtual environment active:
