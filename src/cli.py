@@ -46,24 +46,33 @@ def cmd_quote(ticker_raw: str) -> int:
     try:
         ticker = validate_ticker(ticker_raw)
         quote = fetch_latest_quote(ticker)
-        
-        # Simple output (no advanced formatting required)
-        price_str = f"{quote.price:.2f}"
-        
-        # Convert stored UTC timestamp to local timezone (OS settings).
+
+        price_native = f"{quote.price:.2f}"
         local_ts = quote.timestamp.astimezone()
         ts_str = local_ts.strftime("%Y-%m-%d %H:%M:%S %Z")
-        
-        if quote.company_name:
-            print(f"{quote.ticker} ({quote.company_name}) {price_str} (Fetched at: {ts_str})")
+
+        name_part = f" ({quote.company_name})" if quote.company_name else ""
+
+        if quote.price_sek is not None:
+            price_sek = f"{quote.price_sek:.2f}"
+            print(
+                f"{quote.ticker}{name_part} "
+                f"{price_native} {quote.currency} | {price_sek} SEK "
+                f"(Fetched at: {ts_str})"
+            )
         else:
-            print(f"{quote.ticker} {price_str} (Fetched at: {ts_str})")
-            
+            # FX failed or currency unknown -> still show native quote, no crash
+            print(
+                f"{quote.ticker}{name_part} "
+                f"{price_native} {quote.currency} | SEK: N/A "
+                f"(Fetched at: {ts_str})"
+            )
+
         return 0
-    
+
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
-        return 0    # "program continues" => no crash/traceback
+        return 0
     except QuoteFetchError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 0

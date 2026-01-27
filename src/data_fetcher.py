@@ -29,8 +29,12 @@ class Quote:
     """
     ticker: str
     price: float
+    currency: str
     timestamp: datetime
     company_name: Optional[str] = None
+    price_sek: Optional[float] = None
+    fx_pair: Optional[str] = None
+    fx_rate_to_sek: Optional[float] = None
     
     
 def fetch_latest_quote(ticker: str) -> Quote:
@@ -48,14 +52,80 @@ def fetch_latest_quote(ticker: str) -> Quote:
             raise QuoteFetchError("No price data returned (invalid ticker or no data).")
         
         company_name = _try_company_name(yf_ticker)
+        currency = _try_currency(yf_ticker) or "UNKNOWN"
+        
         ts = datetime.now(timezone.utc)
-        return Quote(ticker=ticker, price=float(price), timestamp=ts, company_name=company_name)
+        
+        # Best-effort SEK conversion
+        price_sek, fx_pair, fx_rate = _try_convert_to_sek(price=float(price), currency=currency)
+        
+        return Quote(
+            ticker=ticker,
+            price=float(price),
+            currency=currency,
+            timestamp=ts,
+            company_name=company_name,
+            price_sek=price_sek,
+            fx_pair=fx_pair,
+            fx_rate_to_sek=fx_rate,
+        )
     
     except QuoteFetchError:
         raise
     except Exception as exc:
         logger.exception("Failed to fetch quote for %s", ticker)
         raise QuoteFetchError(f"Failed to fetch quote: {exc}") from exc
+    
+    
+def _try_currency(yf_ticker: yf.Ticker) -> Optional[str]:
+    """
+    Try to get the instrument currency (e.g. USD, SEK).
+    """
+    try:
+        info = None
+        if hasattr(yf_ticker, "get_info"):
+            info = yf_ticker.get_info()
+        else:
+            info = getattr(yf_ticker, "info", None)
+
+        if not isinstance(info, dict):
+            return None
+
+        ccy = info.get("currency")
+        if isinstance(ccy, str):
+            ccy = ccy.strip().upper()
+            return ccy or None
+        return None
+    except Exception:
+        return None
+    
+    
+def _try_convert_to_sek(price: float, currency: str) -> tuple[Optional[float], Optional[str], Optional[float]]:
+    """
+    Convert a price in <currency> to SEK using Yahoo FX tickers (best effort).
+    """
+    ccy = (currency or "").strip().upper()
+    if not ccy or ccy == "UNKNOWN":
+        return None, None, None
+
+    if ccy == "SEK":
+        return float(price), "SEK", 1.0
+
+    fx_pair = f"{ccy}SEK=X"  # e.g. USDSEK=X, EURSEK=X
+    try:
+        fx_ticker = yf.Ticker(fx_pair)
+
+        fx_rate = _try_fast_info_price(fx_ticker)
+        if fx_rate is None:
+            fx_rate = _try_history_price(fx_ticker)
+
+        if fx_rate is None:
+            return None, fx_pair, None
+
+        price_sek = float(price) * float(fx_rate)
+        return price_sek, fx_pair, float(fx_rate)
+    except Exception:
+        return None, fx_pair, None
     
     
 def _try_company_name(yf_ticker: yf.Ticker) -> Optional[str]:
