@@ -75,7 +75,7 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
     Fallback: derive a price from recent history close values.
     """
     try:
-        hist = yf_ticker.history(period="id", interval="1m")
+        hist = yf_ticker.history(period="1d", interval="1m")
         if hist is not None and not hist.empty:
             closes = hist.get("Close")
             if closes is not None:
