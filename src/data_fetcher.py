@@ -5,7 +5,7 @@ Helpers for fetching market data (quotes, candles, etc.).
 """
 
 from __future__ import annotations
-
+from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
@@ -15,13 +15,29 @@ import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
+class FetchErrorCode(str, Enum):
+    VALIDATION = "VALIDATION"
+    NOT_FOUND = "NOT_FOUND"
+    NETWORK = "NETWORK"
+    UNKNOWN = "UNKNOWN"
 
 class QuoteFetchError(RuntimeError):
     """
     Raised when a quote cannot be fetched or parsed.
     """
-    
-    
+
+    def __init__(self, message: str, code: FetchErrorCode = FetchErrorCode.UNKNOWN):
+        super().__init__(message)
+        self.code = code
+
+def _validate_ticker(ticker: str) -> str:
+        if not ticker or not ticker.strip():
+            raise QuoteFetchError(
+                "Ticker must not be empty",
+                code=FetchErrorCode.VALIDATION,
+            )
+        return ticker.strip().upper()
+
 @dataclass(frozen=True)
 class Quote:
     """
@@ -41,15 +57,20 @@ def fetch_latest_quote(ticker: str) -> Quote:
     """
     Fetch the latest price for a ticker using yfinance.
     """
+    ticker = _validate_ticker(ticker)
     try:
         yf_ticker = yf.Ticker(ticker)
         
         price = _try_fast_info_price(yf_ticker)
         if price is None:
             price = _try_history_price(yf_ticker)
-            
+
         if price is None:
-            raise QuoteFetchError("No price data returned (invalid ticker or no data).")
+            raise QuoteFetchError(
+                f"Ticker '{ticker}' not found or has no price data.",
+                code=FetchErrorCode.NOT_FOUND,
+            )
+
         
         company_name = _try_company_name(yf_ticker)
         currency = _try_currency(yf_ticker) or "UNKNOWN"
@@ -59,6 +80,7 @@ def fetch_latest_quote(ticker: str) -> Quote:
         # Best-effort SEK conversion
         price_sek, fx_pair, fx_rate = _try_convert_to_sek(price=float(price), currency=currency)
         
+
         return Quote(
             ticker=ticker,
             price=float(price),
@@ -72,9 +94,18 @@ def fetch_latest_quote(ticker: str) -> Quote:
     
     except QuoteFetchError:
         raise
+
     except Exception as exc:
-        logger.exception("Failed to fetch quote for %s", ticker)
-        raise QuoteFetchError(f"Failed to fetch quote: {exc}") from exc
+        logger.error(
+            "Network or unexpected error while fetching ticker=%s",
+            ticker,
+            exc_info=True,
+        )
+        raise QuoteFetchError(
+            "Network error while fetching market data.",
+            code=FetchErrorCode.NETWORK,
+        ) from exc
+
     
     
 def _try_currency(yf_ticker: yf.Ticker) -> Optional[str]:
