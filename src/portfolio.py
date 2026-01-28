@@ -64,7 +64,7 @@ class Portfolio:
         target = (DATA_DIR / DEFAULT_FILENAME) if path is None else Path(path)
         
         payload = {
-            "scema_version": SCHEMA_VERSION,
+            "schema_version": SCHEMA_VERSION,
             "saved_at": datetime.now(timezone.utc).isoformat(),
             **self.to_dict(),
         }
