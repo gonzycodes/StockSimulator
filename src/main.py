@@ -95,4 +95,10 @@ def main() -> int:
         log.info("App exit")
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # If arguments are provided, run the CLI commands (e.g. "quote AAPL").
+    if len(sys.argv) > 1:
+        from src.cli import main as cli_main
+        raise SystemExit(cli_main(sys.argv[1:]))
+    
+    # Otherwise start the interactive menu.
+    main_menu()  # start the main menu loop
