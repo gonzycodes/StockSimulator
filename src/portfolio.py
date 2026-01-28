@@ -26,3 +26,11 @@ class Portfolio:
             "cash": self.cash,
             "holdings": dict(self.holdings)
         }
+        
+    def buy(self, ticker:str, quantity: float, price: float) -> None:
+        cost = quantity * price
+        if cost > self.cash:
+            raise ValueError("Not enough cash")
+        self.cash -= cost
+        self.holdings[ticker] = self.holdings.get(ticker,0) +  quantity
+        
