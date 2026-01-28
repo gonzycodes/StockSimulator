@@ -8,9 +8,14 @@ from __future__ import annotations
 
 import argparse
 import sys
+import json
+from pathlib import Path
 
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
+from src.portfolio import Portfolio
+from src.config import DATA_DIR
 
+PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
 try:
     # Preferred (dev) logging layer
@@ -31,6 +36,28 @@ except Exception:  # pragma: no cover
 
     log = get_logger(__name__)
 
+def load_portfolio() -> Portfolio:
+    """Load portfolio from disk. Returns a new portfolio if file not found."""
+    if not PORTFOLIO_FILE.exists():
+        log.info("Portfolio file not found, creating new portfolio.")
+        return Portfolio()
+    try:
+        with open(PORTFOLIO_FILE, "r") as f:
+            data = json.load(f)
+            p = Portfolio()
+            p.cash = data.get("cash", 10000.0)
+            p.holdings = data.get("holdings", {})
+            return p
+    except Exception:
+        return Portfolio()
+    
+def save_portfolio(portfolio: Portfolio) -> None:
+    """Save the portfolio to disk."""
+    try:
+        with open(PORTFOLIO_FILE, "w") as f:
+            json.dump(portfolio.to_dict(), f, indent=4)
+    except Exception as e:
+        print(f"Error saving portfolio: {e}", file=sys.stderr)
 
 def build_parser() -> argparse.ArgumentParser:
     """
@@ -44,6 +71,10 @@ def build_parser() -> argparse.ArgumentParser:
     q = sub.add_parser("quote", help="Fetch the latest price for a ticker.")
     q.add_argument("ticker", help="Ticker symbol, e.g. AAPL")
 
+    s = sub.add_parser("sell", help="Sell an asset from the portfolio.")
+    s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
+    s.add_argument("quantity", type=float, help="Number of shares to sell")
+    
     return parser
 
 
@@ -108,6 +139,49 @@ def cmd_quote(ticker_raw: str) -> int:
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
 
+def cmd_sell(ticker_raw: str, quantity: float) -> int:
+    """
+    Execute the sell command.
+    """
+    try:
+        # 1. Validation
+        ticker = validate_ticker(ticker_raw)
+        if quantity <= 0:
+            print("Error: Quantity must be greater than 0.", file=sys.stderr)
+            return 1
+
+        # 2. Fetch current price (HÄR ÄR NYCKELN!)
+        print(f"Fetching price for {ticker}...")
+        quote = fetch_latest_quote(ticker)
+        price = quote.price
+
+        # 3. Load Portfolio
+        portfolio = load_portfolio()
+
+        # 4. Execute Transaction
+        portfolio.sell(ticker, quantity, price)
+
+        # 5. Save State
+        save_portfolio(portfolio)
+
+        # 6. User Feedback
+        total_sale = quantity * price
+        print(f"SUCCESS: Sold {quantity} shares of {ticker} at {price:.2f}.")
+        print(f"Proceeds: {total_sale:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        
+        log.info(f"SOLD {ticker}: qty={quantity} price={price} total={total_sale}")
+        return 0
+
+    except ValueError as exc:
+        print(f"Transaction Failed: {exc}", file=sys.stderr)
+        return 1
+    except QuoteFetchError as exc:
+        print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during sell command")
+        print(f"System Error: {exc}", file=sys.stderr)
+        return 1
 
 def main(argv: list[str] | None = None) -> int:
     """
@@ -121,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "quote":
             return cmd_quote(args.ticker)
-
+        
+        elif args.command == "sell":
+            return cmd_sell(args.ticker, args.quantity)
+        
         print("Error: Unknown command.", file=sys.stderr)
         return 0
     finally:
@@ -134,3 +211,5 @@ def run_cli(argv: list[str]) -> int:
     """
     return main(argv)
 
+if __name__ == "__main__":
+    sys.exit(main())
