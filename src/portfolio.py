@@ -34,3 +34,34 @@ class Portfolio:
         self.cash -= cost
         self.holdings[ticker] = self.holdings.get(ticker,0) +  quantity
         
+    def sell(self, ticker: str, quantity: float, price: float) -> None:
+        """
+        Sells a specified amount of a stock.
+        Updates cash and removes the ticker from holdings if amount becomes 0.
+        
+        Args:
+            ticker: The stock symbol (e.g., 'AAPL').
+            quantity: The amount of shares to sell.
+            price: The current market price per share.
+            
+        Raises:
+            ValueError: If user does not own the stock or tries to sell more than owned.
+        """
+        # 1. Validation: Do we own this ticker?
+        # FIX: Removed "or self.holdings" which caused the bug
+        if ticker not in self.holdings:
+            raise ValueError(f"You do not own any shares of '{ticker}'.")
+        
+        # 2. Validation: Do we have enough shares?
+        current_quantity = self.holdings[ticker]
+        if quantity > current_quantity:
+            raise ValueError(f"Not enough shares. You have {current_quantity}, tried to sell {quantity}.")
+
+        # 3. Execute Transaction
+        revenue = quantity * price
+        self.cash += revenue
+        self.holdings[ticker] -= quantity
+
+        # 4. Cleanup: Remove ticker if holding is zero (or extremely close to zero)
+        if self.holdings[ticker] <= 0:
+            del self.holdings[ticker]
