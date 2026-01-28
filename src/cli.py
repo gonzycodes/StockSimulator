@@ -76,10 +76,17 @@ def cmd_quote(ticker_raw: str) -> int:
         price_sek_val = getattr(quote, "price_sek", None)
         if price_sek_val is not None:
             price_sek = f"{float(price_sek_val):.2f}"
+
+            fx_pair = getattr(quote, "fx_pair", None)
+            fx_rate = getattr(quote, "fx_rate_to_sek", None)
+            fx_part = ""
+            if fx_pair and fx_rate:
+                fx_part = f" (FX: {fx_pair} {float(fx_rate):.4f})"
+
             print(
                 f"{quote.ticker}{name_part} "
                 f"{price_native} {currency} | {price_sek} SEK "
-                f"(Fetched at: {ts_str})"
+                f"(Fetched at: {ts_str}){fx_part}"
             )
         else:
             print(
