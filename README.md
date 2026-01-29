@@ -112,14 +112,14 @@ To get a local copy up and running follow these simple example steps.
 2. **Create virtual environment**
    Windows:
    ```sh
-   python -m venv venv
-   venv\Scripts\activate 
+   python -m venv .venv
+   source .venv\Scripts\activate
    ```
   
    MacOS/Linux:
    ```sh
-   python3 -m venv venv
-   source venv/bin/activate
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
 
    When venv is activated you will see (venv) in the prompt.
@@ -128,11 +128,80 @@ To get a local copy up and running follow these simple example steps.
    ```sh  
    pip install -r requirements.txt
    ```
+
+### Common commands
+Run the app (menu):
+```bash
+python -m src.main
+```
+
+Run a CLI command:
+```bash
+python -m src.main quote AAPL
+```
+
+Run tests:
+Run a CLI command:
+```bash
+pytest -q
+```
+
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- USAGE EXAMPLES -->
+## Usage
+
+The app can run in two modes:
+
+1) Interactive mode (menu + safe REPL loop)
+2) CLI mode (single command via argparse)
+
+### Interactive mode (recommended)
+From the project root:
+```bash
+python -m src.main
+```
+
+Inside the simulation:
+- `help` or `?` shows available commands
+- empty input does nothing (new prompt)
+- unknown commands show a hint ("Type 'help' ...")
+
+Example commands:
+- `quote AAPL`
+- `sell AAPL 2`
+- `portfolio`
+- `exit`
+
+### CLI mode (single command)
+You can run CLI commands either via the main entrypoint (recommended):
+```bash
+python -m src.main quote AAPL
+python -m src.main sell AAPL 2
+```
+
+Or directly via the CLI module:
+```bash
+python -m src.cli quote AAPL
+python -m src.cli sell AAPL 2
+```
+
+Optional log level:
+```bash
+python -m src.main --log-level DEBUG quote AAPL
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- TESTS -->
 ## Tests
 The project includes automated tests using **PyTest**.
 
 ### Running the tests
-From the project root (```StockSimulator/```), with your virtual environment active:
+From the project root (`StockSimulator/`), with your virtual environment active:
 ```bash
 pytest
 ```
@@ -141,17 +210,20 @@ or with more detailed output:
 pytest -v
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-<!-- USAGE EXAMPLES -->
-## Usage
-
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- ERROR HANDLING -->
+## Error Handling
+The interactive simulation loop is designed to be stable and never crash on expected errors:
+- **Input/validation errors** are caught and shown as a friendly message.
+- **File errors** (e.g. unreadable or unwritable portfolio JSON) are caught and shown as a friendly message.
+- **Market/API errors** when fetching quotes are caught and shown as a friendly message.
+- For **unexpected exceptions**, the app logs a full stacktrace (ERROR) and prints:
+  `Unexpected error occurred.`
+
+After handling an error, the simulation loop continues and shows a new prompt.
 
 
 <!-- ROADMAP -->
@@ -160,7 +232,6 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 TBA
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 <!-- CONTRIBUTING -->
@@ -180,7 +251,6 @@ Don't forget to give the project a star! Thanks again!
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
 <!-- LICENSE -->
 ## License
 
@@ -189,14 +259,12 @@ TBA
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
 <!-- CONTACT -->
 ## Contact
 
 TBA
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 <!-- ACKNOWLEDGMENTS -->
@@ -216,31 +284,35 @@ Use this space to list resources you find helpful and would like to give credit 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-``` ## Map Structure
-stocksimulator/
+## Map Structure
+```bash
+StockSimulator/
+├── data/                          # Local runtime data + optional helper modules
+│   └── yfinance_fetcher.py        # Legacy/alt Yahoo Finance fetch helper (used in tests)
 │
-├── data/                 # Stores portfolio files (JSON) and logs
-├── src/
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── logger.py
-│   ├── main.py           # Entry point (CLI Menu)
-│   ├── market.py         # Fetches market data from Yahoo Finance (API)
-│   ├── portfolio.py      # Core logic for cash, holdings, and trades
-│   ├── storage.py        # Handles data persistence (Save/Load JSON)
-│   ├── analysis.py       # Analytics using Pandas (Calculates Profit/Loss)
-│   └── utils.py          # Utility functions (Input validation, etc.)
-├── tests/
-│   ├── conftest.py
-│   ├── test_logger.py
-│   ├── test_portfolio.py
-│   ├── test_market.py
-│   └── ...
-├── requirements.txt      # List of dependencies
-├── README.md             # Project documentation
-└── .github/workflows/python-app.yml  # CI/CD configuration
+├── src/                           # Application source code
+│   ├── main.py                    # Entry point: menu + safe interactive loop + routes args to CLI
+│   ├── cli.py                     # Argparse CLI commands (quote/sell) + portfolio JSON IO helpers
+│   ├── data_fetcher.py            # Market data layer (yfinance) + Quote model + QuoteFetchError codes
+│   ├── portfolio.py               # Portfolio domain model (cash/holdings + buy/sell + total_value)
+│   ├── transaction_manager.py     # TransactionManager + domain exceptions + Transaction result model
+│   ├── errors.py                  # Controlled app error types (ValidationError/FileError/DataFetchError)
+│   ├── logger.py                  # Central logging setup (console + rotating file) + env initializer 
+│   └── config.py                  # Centralized paths (PROJECT_ROOT/DATA_DIR/SRC_DIR/TESTS_DIR)
+│
+├── tests/                         # Automated tests (pytest)
+│   ├── conftest.py                # Pytest config: adds repo root to sys.path for `from src...`
+│   ├── test_logger.py             # Tests logging init + idempotency + log file creation
+│   ├── test_portfolio.py          # Tests Portfolio behaviors (cash/holdings operations)
+│   ├── test_transaction_manager.py # Tests TransactionManager + domain validation/exceptions 
+│   ├── test_market_data.py        # Tests yfinance fetching + fetch_latest_quote error codes 
+│   └── test_cli_quote.py          # CLI quote command tests (output/behavior)
+│
+├── requirements.txt               # Python dependencies (pip install -r requirements.txt)
+└── README.md                      # Project documentation
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
