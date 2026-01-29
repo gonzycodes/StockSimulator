@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.config import DATA_DIR
 from src.logger import get_logger
@@ -23,6 +23,55 @@ log = get_logger(__name__)
 DEFAULT_FILENAME = "portfolio.json"
 SCHEMA_VERSION = 1
 
+def load_portfolio(path: Optional[Path] = None) -> Portfolio:
+    """
+    Loads the portfolio from a JSON file.
+    
+    - File missing          → returns default Portfolio + logs INFO
+    - Invalid JSON / validation fails → returns default + logs ERROR + prints warning
+    - Success               → returns loaded Portfolio + logs INFO
+    
+    Always returns a valid Portfolio object (never None).
+    """
+    target = (DATA_DIR / DEFAULT_FILENAME) if path is None else Path(path)
+    
+    if not target.exists():
+        log.info("Portfolio file not found at %s → starting with default portfolio", target)
+        print("No saved portfolio found. Starting with a new default portfolio (cash = 10000 SEK).")
+        return Portfolio()
+
+    if not target.is_file():
+        log.warning("Path exists but is not a file: %s → using default", target)
+        print("Warning: Portfolio path is not a file. Starting with default.")
+        return Portfolio()
+    
+    try:
+        raw_content = target.read_text(encoding="utf-8")
+        data = json.loads(raw_content)
+
+        portfolio = parse_portfolio_dict(data)
+
+        log.info("Successfully loaded portfolio from %s | cash: %.2f | holdings: %d",
+                 target, portfolio.cash, len(portfolio.holdings))
+
+        return portfolio
+    
+    except json.JSONDecodeError as e:
+        log.error("Corrupt/invalid JSON in portfolio file %s: %s", target, e)
+        print(f"Warning: Save portfolio file is corrupt or invalid JSON.")
+        print(f"Starting with default portfolio instead. (Error: {e})")
+        return Portfolio()
+    
+    except ValueError as e:
+        log.error("Validation failed when loading portfolio from %s: %s", target, e)
+        print(f"Warning: Saved portfolio contains invalid data (e.g negative cash or quantities).")
+        print(f"Starting with default portfolio instead. (Error: {e})")
+        return Portfolio()
+    
+    except Exception as e:
+        log.exception("Unexpected error loading portfolio from %s", target)
+        print("Unexpected error while loading portfolio. Starting with default.")
+        return Portfolio()
 
 @dataclass
 class Portfolio:
@@ -52,44 +101,37 @@ class Portfolio:
         }
 
     def buy(self, ticker: str, quantity: float, price: float) -> None:
-        """Buy an asset and update cash/holdings."""
+        """Buy an asset and update cash/holdings + autosave."""
         cost = quantity * price
         if cost > self.cash:
             raise ValueError("Not enough cash")
+        
         self.cash -= cost
-        self.holdings[ticker] = self.holdings.get(ticker,0) +  quantity
+        self.holdings[ticker] = self.holdings.get(ticker, 0) + quantity
+        
+        # Autosave after purchase
+        self.save()
+        log.info("Autosparade portfölj efter köp av %s (%.2f st)", ticker, quantity)
         
     def sell(self, ticker: str, quantity: float, price: float) -> None:
-        """
-        Sells a specified amount of a stock.
-        Updates cash and removes the ticker from holdings if amount becomes 0.
-        
-        Args:
-            ticker: The stock symbol (e.g., 'AAPL').
-            quantity: The amount of shares to sell.
-            price: The current market price per share.
-            
-        Raises:
-            ValueError: If user does not own the stock or tries to sell more than owned.
-        """
-        # 1. Validation: Do we own this ticker?
-        # FIX: Removed "or self.holdings" which caused the bug
+        """Sell an asset and update cash/holdings + autosave."""
         if ticker not in self.holdings:
             raise ValueError(f"You do not own any shares of '{ticker}'.")
         
-        # 2. Validation: Do we have enough shares?
         current_quantity = self.holdings[ticker]
         if quantity > current_quantity:
             raise ValueError(f"Not enough shares. You have {current_quantity}, tried to sell {quantity}.")
 
-        # 3. Execute Transaction
         revenue = quantity * price
         self.cash += revenue
         self.holdings[ticker] -= quantity
 
-        # 4. Cleanup: Remove ticker if holding is zero (or extremely close to zero)
         if self.holdings[ticker] <= 0:
             del self.holdings[ticker]
+        
+        # Autosave after sell
+        self.save()
+        log.info("Autosparade portfölj efter försäljning av %s (%.2f st)", ticker, quantity)
 
     def save(self, path: Path | None = None) -> bool:
         """Save portfolio to JSON. Returns True on success, False on error."""
@@ -119,3 +161,43 @@ def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     tmp_path.write_text(data, encoding="utf-8")
     tmp_path.replace(path)
     
+def parse_portfolio_dict(data: dict) -> Portfolio:
+    """
+    Parses a dictionary loaded from JSON and creates a validated Portfolio object.
+    
+    Raises ValueError if any required field is missing, wrong type, or invalid value.
+    This function is pure (no side effects) → easy to unit test.
+    """  
+    version = data.get("schema_version")
+    if version is None or version != SCHEMA_VERSION:
+        raise ValueError(f"Unsupported or missing schema_version: {version}")
+    
+    cash_raw = data.get("cash")
+
+    if cash_raw is None:
+        raise ValueError("Missing 'cash' field in portfolio data")
+
+    try:
+        cash = float(cash_raw)
+    except (TypeError, ValueError):
+        raise ValueError(f"Cannot convert cash to number: {cash_raw!r}")
+
+    if cash < 0:
+        raise ValueError(f"Cash cannot be negative: {cash}")
+
+    holdings_raw = data.get("holdings", {})
+    if not isinstance(holdings_raw, dict):
+        raise ValueError("Holdings must be a dictionary")
+    holdings = {}
+    for ticker, qty_raw in holdings_raw.items():
+        if not isinstance(ticker, str) or not ticker.strip():
+            raise ValueError(f"Invalid ticker format: '{ticker}'")
+        
+        if not isinstance(qty_raw, (int, float)):
+            raise ValueError(f"Invalid quantity type for {ticker}: {type(qty_raw).__name__}")
+        qty = float(qty_raw)
+        if qty < 0:
+            raise ValueError(f"Quantity cannot be negative for {ticker}: {qty}")
+        if qty > 0:
+            holdings[ticker.upper()] = qty
+    return Portfolio(cash=cash, holdings=holdings)
