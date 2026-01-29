@@ -42,3 +42,35 @@ def test_get_latest_price_network_error(mock_ticker):
 
     with pytest.raises(Exception, match="Connection timeout"):
         get_latest_price("MSFT")
+
+def test_fetch_latest_quote_invalid_ticker():
+    from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
+
+    with pytest.raises(QuoteFetchError) as exc:
+        fetch_latest_quote("   ")
+
+    assert exc.value.code == FetchErrorCode.VALIDATION
+
+@patch("src.data_fetcher.yf.Ticker")
+def test_fetch_latest_quote_not_found(mock_ticker):
+    fake = mock_ticker.return_value
+    fake.fast_info = {}
+    fake.history.return_value = None
+
+    from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
+
+    with pytest.raises(QuoteFetchError) as exc:
+        fetch_latest_quote("FAKE123")
+
+    assert exc.value.code == FetchErrorCode.NOT_FOUND
+
+@patch("src.data_fetcher.yf.Ticker")
+def test_fetch_latest_quote_network_error(mock_ticker):
+    mock_ticker.side_effect = Exception("Connection timeout")
+
+    from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
+
+    with pytest.raises(QuoteFetchError) as exc:
+        fetch_latest_quote("MSFT")
+
+    assert exc.value.code == FetchErrorCode.NETWORK
