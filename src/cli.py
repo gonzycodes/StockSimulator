@@ -11,9 +11,12 @@ import sys
 import json
 from pathlib import Path
 
+from json import JSONDecodeError
+
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
 from src.portfolio import Portfolio
 from src.config import DATA_DIR
+from src.errors import FileError, ValidationError
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
@@ -36,28 +39,37 @@ except Exception:  # pragma: no cover
 
     log = get_logger(__name__)
 
-def load_portfolio() -> Portfolio:
+def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
-    if not PORTFOLIO_FILE.exists():
+    if not path.exists():
         log.info("Portfolio file not found, creating new portfolio.")
         return Portfolio()
+
     try:
-        with open(PORTFOLIO_FILE, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            p = Portfolio()
-            p.cash = data.get("cash", 10000.0)
-            p.holdings = data.get("holdings", {})
-            return p
-    except Exception:
-        return Portfolio()
+
+        p = Portfolio()
+        p.cash = float(data.get("cash", 10000.0))
+        p.holdings = dict(data.get("holdings", {}))
+        return p
+
+    except (OSError, JSONDecodeError, ValueError, TypeError) as exc:
+        # Log full detail for debugging, show friendly error via FileError
+        log.warning("Failed to load portfolio file: %s", path, exc_info=True)
+        raise FileError(f"Could not read portfolio file: {path}") from exc
     
-def save_portfolio(portfolio: Portfolio) -> None:
-    """Save the portfolio to disk."""
+    
+def save_portfolio(portfolio: Portfolio, path: Path = PORTFOLIO_FILE) -> None:
+    """Save the portfolio to disk as JSON."""
     try:
-        with open(PORTFOLIO_FILE, "w") as f:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(portfolio.to_dict(), f, indent=4)
-    except Exception as e:
-        print(f"Error saving portfolio: {e}", file=sys.stderr)
+    except OSError as exc:
+        log.error("Failed to save portfolio file: %s", path, exc_info=True)
+        raise FileError(f"Could not save portfolio file: {path}") from exc
+
 
 def build_parser() -> argparse.ArgumentParser:
     """
@@ -79,12 +91,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def validate_ticker(raw: str) -> str:
-    """
-    Normalize and validate a ticker string.
-    """
+    """Normalize and validate a ticker string."""
     ticker = (raw or "").strip().upper()
     if not ticker:
-        raise ValueError("Ticker must not be empty.")
+        raise ValidationError("Ticker must not be empty.")
     return ticker
 
 
@@ -147,8 +157,7 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         # 1. Validation
         ticker = validate_ticker(ticker_raw)
         if quantity <= 0:
-            print("Error: Quantity must be greater than 0.", file=sys.stderr)
-            return 1
+            raise ValidationError("Quantity must be greater than 0.")
 
         # 2. Fetch current price (HÄR ÄR NYCKELN!)
         print(f"Fetching price for {ticker}...")
