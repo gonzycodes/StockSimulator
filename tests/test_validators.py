@@ -1,22 +1,20 @@
 import pytest
 from src.validators import normalize_ticker, validate_ticker, validate_positive_float, ValidationError
 
-# Tests for ticker
-
 def test_normalize_ticker_basic():
-    # En vanlig ticker ska bli versaler.
+    # Standard tickers should be normalized to uppercase.
     assert normalize_ticker(" aapl ") == "AAPL"
     assert normalize_ticker("GOOGL") == "GOOGL"
     assert normalize_ticker("") == ""
     assert normalize_ticker("  ") == ""
     
 def test_normalize_ticker_with_messy_input():
-    # Mellanslag ska städas bort.
+    # Surrounding whitespace should be stripped.
     assert normalize_ticker(" msft$ ") == "MSFT$"
     assert normalize_ticker("!tsla") == "!TSLA"
     
 def test_validate_ticker_empty():
-    # Tomma tickers ska ge ValidationError.
+    # Empty tickers should raise a ValidationError.
     with pytest.raises(ValidationError):
         validate_ticker("")
         
@@ -24,22 +22,22 @@ def test_validate_ticker_empty():
         validate_ticker("   ")
         
 def test_validate_float_valid():
-    # Giltiga positiva float-värden ska returneras korrekt.
+    # Valid positive floats should be returned correctly.
     result = validate_positive_float("10.5")
     assert result == 10.5
     assert isinstance(result, float)
     
 def test_validate_float_invalid_non_numeric():
-    # Icke-numeriska värden ska ge ValidationError.
+    # Non-numeric values should raise a ValidationError.
     with pytest.raises(ValidationError):
         validate_positive_float("abc")
 
 def test_validate_float_invalid_negative():
-    # Negativa värden ska ge ValidationError.
+    # Negative values should raise a ValidationError.
     with pytest.raises(ValidationError):
         validate_positive_float("-5")
 
 def test_validate_float_invalid_zero():
-    # Noll ska ge ValidationError.
+    # Zero should raise a ValidationError.
     with pytest.raises(ValidationError):
         validate_positive_float("0")
