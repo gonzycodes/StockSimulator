@@ -123,7 +123,6 @@ class Portfolio:
         current_qty = self.holdings.get(ticker, 0.0)
         self.holdings[ticker] = current_qty + quantity
         
-        
         self.save()
         log.info("Autosaved portfolio after buying %s (%.2f units)", ticker, quantity)
         
