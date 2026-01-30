@@ -91,7 +91,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
     s.add_argument("quantity", type=float, help="Number of shares to sell")
     
+    # Combined: Buy command (Yours)
+    b = sub.add_parser("buy", help="Buy an asset and add to the portfolio.")
+    b.add_argument("ticker", help="Ticker symbol to buy, e.g. AAPL")
+    b.add_argument("quantity", type=float, help="Number of shares to buy")
+    
+    # Combined: Portfolio command (Incoming from dev)
     p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
+
     return parser
 
 
@@ -152,6 +159,43 @@ def cmd_quote(ticker_raw: str) -> int:
         print(f"File Error: {exc}", file=sys.stderr)
         return 1
 
+def cmd_buy(ticker_raw: str, quantity: float) -> int:
+    """
+    Execute the buy command.
+    """
+    try:
+        ticker = validate_ticker(ticker_raw)
+        valid_quantity = validate_positive_float(str(quantity))
+        
+        print(f"Fetching price for {ticker}...")
+        quote = fetch_latest_quote(ticker)
+        price = quote.price
+        
+        portfolio = load_portfolio()
+        portfolio.buy(ticker, valid_quantity, price)
+        
+        save_portfolio(portfolio)
+        
+        total_cost = valid_quantity * price
+        print(f"SUCCESS: Bought {valid_quantity} shares of {ticker} at {price:.2f}.")
+        print(f"Cost: {total_cost:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        
+        log.info(f"BOUGHT {ticker}: qty={valid_quantity} price={price} total={total_cost}")
+        return 0
+    
+    except ValidationError as e:
+        print(f"Input Error: {e}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"Transaction Failed: {exc}", file=sys.stderr)
+        return 1
+    except QuoteFetchError as exc:
+        print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during buy command")
+        print(f"System Error: {exc}", file=sys.stderr)
+        return 1
 
 def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
@@ -231,6 +275,10 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "sell":
             return cmd_sell(args.ticker, args.quantity)
         
+        # Handled both cases here
+        elif args.command == "buy":
+            return cmd_buy(args.ticker, args.quantity)
+
         elif args.command == "portfolio":
             return cmd_portfolio()
         
