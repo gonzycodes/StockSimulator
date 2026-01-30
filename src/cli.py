@@ -10,6 +10,7 @@ import argparse
 import sys
 import json
 from pathlib import Path
+from typing import Dict
 
 from json import JSONDecodeError
 
@@ -18,6 +19,7 @@ from src.portfolio import Portfolio
 from src.config import DATA_DIR
 from src.errors import FileError, ValidationError
 from src.validators import validate_ticker, validate_positive_float
+from src.formatters import format_portfolio_output
 
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
@@ -89,6 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
     s.add_argument("quantity", type=float, help="Number of shares to sell")
     
+    p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
     return parser
 
 
@@ -190,6 +193,27 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         print(f"File Error: {exc}", file=sys.stderr)
         return 1
 
+def cmd_portfolio() -> int:
+    try:
+        portfolio = load_portfolio()
+        price_map: Dict[str, float] = {}
+        for ticker in portfolio.holdings.keys():
+            try:
+                quote = fetch_latest_quote(ticker)
+                price_map[ticker] = float(quote.price)
+            except QuoteFetchError as exc:
+                log.warning("Price fetch failed for %s: %s", ticker, exc)
+        output = format_portfolio_output(portfolio, price_map)
+        print(output)
+        return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during portfolio command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1        
+
 
 def main(argv: list[str] | None = None) -> int:
     """
@@ -206,6 +230,9 @@ def main(argv: list[str] | None = None) -> int:
         
         elif args.command == "sell":
             return cmd_sell(args.ticker, args.quantity)
+        
+        elif args.command == "portfolio":
+            return cmd_portfolio()
         
         print("Error: Unknown command.", file=sys.stderr)
         return 0
