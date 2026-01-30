@@ -17,6 +17,8 @@ from src.data_fetcher import QuoteFetchError, fetch_latest_quote
 from src.portfolio import Portfolio
 from src.config import DATA_DIR
 from src.errors import FileError, ValidationError
+from src.validators import validate_ticker, validate_positive_float
+
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
@@ -90,14 +92,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def validate_ticker(raw: str) -> str:
-    """Normalize and validate a ticker string."""
-    ticker = (raw or "").strip().upper()
-    if not ticker:
-        raise ValidationError("Ticker must not be empty.")
-    return ticker
-
-
 def cmd_quote(ticker_raw: str) -> int:
     """
     Execute the quote command.
@@ -113,11 +107,11 @@ def cmd_quote(ticker_raw: str) -> int:
         ts_str = local_ts.strftime("%Y-%m-%d %H:%M:%S %Z")
 
         name_part = f" ({quote.company_name})" if getattr(quote, "company_name", None) else ""
-
         price_sek_val = getattr(quote, "price_sek", None)
+        
         if price_sek_val is not None:
             price_sek = f"{float(price_sek_val):.2f}"
-
+            
             fx_pair = getattr(quote, "fx_pair", None)
             fx_rate = getattr(quote, "fx_rate_to_sek", None)
             fx_part = ""
@@ -138,6 +132,9 @@ def cmd_quote(ticker_raw: str) -> int:
 
         return 0
 
+    except ValidationError as e:
+        print(f"Input Error: {e}", file=sys.stderr)
+        return 1
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 0
@@ -148,39 +145,37 @@ def cmd_quote(ticker_raw: str) -> int:
         log.exception("Unexpected CLI error")
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
 
 def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
     Execute the sell command.
     """
     try:
-        # 1. Validation
         ticker = validate_ticker(ticker_raw)
-        if quantity <= 0:
-            raise ValidationError("Quantity must be greater than 0.")
+        valid_quantity = validate_positive_float(str(quantity))
 
-        # 2. Fetch current price (HÄR ÄR NYCKELN!)
         print(f"Fetching price for {ticker}...")
         quote = fetch_latest_quote(ticker)
         price = quote.price
 
-        # 3. Load Portfolio
         portfolio = load_portfolio()
-
-        # 4. Execute Transaction
-        portfolio.sell(ticker, quantity, price)
-
-        # 5. Save State
+        portfolio.sell(ticker, valid_quantity, price)
         save_portfolio(portfolio)
 
-        # 6. User Feedback
-        total_sale = quantity * price
-        print(f"SUCCESS: Sold {quantity} shares of {ticker} at {price:.2f}.")
+        total_sale = valid_quantity * price
+        print(f"SUCCESS: Sold {valid_quantity} shares of {ticker} at {price:.2f}.")
         print(f"Proceeds: {total_sale:.2f}. New Cash Balance: {portfolio.cash:.2f}")
         
-        log.info(f"SOLD {ticker}: qty={quantity} price={price} total={total_sale}")
+        log.info(f"SOLD {ticker}: qty={valid_quantity} price={price} total={total_sale}")
         return 0
 
+    except ValidationError as e:
+        print(f"Input Error: {e}", file=sys.stderr)
+        return 1
     except ValueError as exc:
         print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
@@ -191,6 +186,10 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         log.exception("Unexpected error during sell command")
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
 
 def main(argv: list[str] | None = None) -> int:
     """
