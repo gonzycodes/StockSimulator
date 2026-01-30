@@ -202,6 +202,14 @@ python -m src.main --log-level DEBUG quote AAPL
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+### Portfolio command
+
+Show current portfolio status including cash, holdings, and total value.
+
+```bash
+python -m src.cli portfolio
+```
+
 <!-- TESTS -->
 
 ## Tests
