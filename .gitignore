@@ -219,3 +219,7 @@ __marimo__/
 # /logs/
 logs/
 *.log
+
+# /data/
+data/portfolio.json
+*.json
