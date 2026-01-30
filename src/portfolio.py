@@ -52,12 +52,19 @@ class Portfolio:
         }
 
     def buy(self, ticker: str, quantity: float, price: float) -> None:
-        """Buy an asset and update cash/holdings."""
+        """
+        Buys a specified amount of a stock.
+        Updates cash and adds the ticker to holdings.
+        """
         cost = quantity * price
+        
         if cost > self.cash:
-            raise ValueError("Not enough cash")
+            raise ValueError(f"Insufficient funds. Cost: {cost:.2f}, Cash: {self.cash:.2f}")
+        
         self.cash -= cost
-        self.holdings[ticker] = self.holdings.get(ticker,0) +  quantity
+        
+        current_qty = self.holdings.get(ticker, 0.0)
+        self.holdings[ticker] = current_qty + quantity
         
     def sell(self, ticker: str, quantity: float, price: float) -> None:
         """
