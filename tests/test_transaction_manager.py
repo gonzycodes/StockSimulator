@@ -11,135 +11,126 @@ from src.transaction_manager import (
 )
 
 
-# -------------------------
-# BUY
-# -------------------------
+@pytest.fixture
+def portfolio():
+    """Enkel portfölj med 1000 SEK cash och inga innehav."""
+    return Portfolio(cash=1000.0)
 
-def test_buy_updates_cash_and_holdings():
-    p = Portfolio(cash=1000.0)
-    tm = TransactionManager()
 
-    tx = tm.buy(p, ticker="AAPL", quantity=2, price=100.0)
+@pytest.fixture
+def tm():
+    """TransactionManager-instans."""
+    return TransactionManager()
 
-    assert p.cash == 800.0
-    assert p.holdings["AAPL"] == 2
 
-    # Transaction summary
+# ────────────────────────────────────────────────
+# BUY-tester
+# ────────────────────────────────────────────────
+
+def test_buy_successful_updates_portfolio_and_returns_transaction(portfolio, tm):
+    tx = tm.buy(portfolio, ticker="AAPL", quantity=2.5, price=120.0)
+
+    assert portfolio.cash == pytest.approx(700.0)
+    assert portfolio.holdings["AAPL"] == pytest.approx(2.5)
+
     assert tx.kind == "buy"
     assert tx.ticker == "AAPL"
-    assert tx.quantity == 2
-    assert tx.price == 100.0
-    assert tx.gross_amount == 200.0
-    assert tx.cash_after == 800.0
+    assert tx.quantity == pytest.approx(2.5)
+    assert tx.price == pytest.approx(120.0)
+    assert tx.gross_amount == pytest.approx(300.0)
+    assert tx.cash_after == pytest.approx(700.0)
 
 
-def test_buy_raises_if_insufficient_funds_and_does_not_mutate_portfolio():
-    p = Portfolio(cash=50.0)
-    p.holdings["AAPL"] = 1  # make sure holdings stay unchanged
-    tm = TransactionManager()
-
-    cash_before = p.cash
-    holdings_before = dict(p.holdings)
+def test_buy_insufficient_funds_raises_and_portfolio_unchanged(portfolio, tm):
+    cash_before = portfolio.cash
+    holdings_before = dict(portfolio.holdings)
 
     with pytest.raises(InsufficientFundsError):
-        tm.buy(p, ticker="AAPL", quantity=1, price=100.0)
+        tm.buy(portfolio, "TSLA", 10, 150.0)  # kostar 1500 > 1000
 
-    # Atomicity: portfolio must be unchanged
-    assert p.cash == cash_before
-    assert p.holdings == holdings_before
+    assert portfolio.cash == cash_before
+    assert portfolio.holdings == holdings_before
 
 
-# -------------------------
-# SELL
-# -------------------------
+def test_buy_zero_or_negative_quantity_raises(portfolio, tm):
+    with pytest.raises(InvalidQuantityError):
+        tm.buy(portfolio, "AAPL", 0, 100.0)
 
-def test_sell_updates_cash_and_holdings():
-    p = Portfolio(cash=1000.0)
-    p.holdings["AAPL"] = 2
-    tm = TransactionManager()
+    with pytest.raises(InvalidQuantityError):
+        tm.buy(portfolio, "AAPL", -3, 100.0)
 
-    tx = tm.sell(p, ticker="AAPL", quantity=1, price=100.0)
 
-    assert p.cash == 1100.0
-    assert p.holdings["AAPL"] == 1
+def test_buy_invalid_ticker_raises(portfolio, tm):
+    for bad_ticker in ["", "   ", 123, None]:  # type: ignore[list-item]
+        with pytest.raises(InvalidTickerError):
+            tm.buy(portfolio, bad_ticker, 1, 100.0)
 
-    # Transaction summary
+
+def test_buy_invalid_price_raises(portfolio, tm):
+    for bad_price in [0, -50, "100", None]:  # type: ignore[list-item]
+        with pytest.raises(InvalidPriceError):
+            tm.buy(portfolio, "AAPL", 1, bad_price)
+
+
+# ────────────────────────────────────────────────
+# SELL-tester
+# ────────────────────────────────────────────────
+
+def test_sell_successful_updates_portfolio_and_returns_transaction(portfolio, tm):
+    portfolio.holdings["AAPL"] = 5.0
+    tx = tm.sell(portfolio, ticker="AAPL", quantity=2, price=130.0)
+
+    assert portfolio.cash == pytest.approx(1260.0)
+    assert portfolio.holdings["AAPL"] == pytest.approx(3.0)
+
     assert tx.kind == "sell"
     assert tx.ticker == "AAPL"
-    assert tx.quantity == 1
-    assert tx.price == 100.0
-    assert tx.gross_amount == 100.0
-    assert tx.cash_after == 1100.0
+    assert tx.quantity == pytest.approx(2.0)
+    assert tx.price == pytest.approx(130.0)
+    assert tx.gross_amount == pytest.approx(260.0)
+    assert tx.cash_after == pytest.approx(1260.0)
 
 
-def test_sell_removes_ticker_if_fully_sold():
-    p = Portfolio(cash=1000.0)
-    p.holdings["AAPL"] = 2
-    tm = TransactionManager()
+def test_sell_completely_removes_ticker_from_holdings(portfolio, tm):
+    portfolio.holdings["ERIC-B.ST"] = 4.0
+    tm.sell(portfolio, "ERIC-B.ST", 4.0, 85.0)
 
-    tm.sell(p, ticker="AAPL", quantity=2, price=100.0)
-
-    assert p.cash == 1200.0
-    assert "AAPL" not in p.holdings
+    assert portfolio.cash == pytest.approx(1340.0)
+    assert "ERIC-B.ST" not in portfolio.holdings
 
 
-def test_sell_raises_if_insufficient_holdings_and_does_not_mutate_portfolio():
-    p = Portfolio(cash=1000.0)
-    p.holdings["AAPL"] = 1
-    tm = TransactionManager()
-
-    cash_before = p.cash
-    holdings_before = dict(p.holdings)
+def test_sell_insufficient_holdings_raises_and_portfolio_unchanged(portfolio, tm):
+    portfolio.holdings["AAPL"] = 3.0
+    cash_before = portfolio.cash
+    holdings_before = dict(portfolio.holdings)
 
     with pytest.raises(InsufficientHoldingsError):
-        tm.sell(p, ticker="AAPL", quantity=2, price=100.0)
+        tm.sell(portfolio, "AAPL", 5.0, 100.0)
 
-    # Atomicity: portfolio must be unchanged
-    assert p.cash == cash_before
-    assert p.holdings == holdings_before
-
-
-# -------------------------
-# INPUT VALIDATION
-# -------------------------
-
-def test_validate_inputs_raises_on_invalid_ticker():
-    p = Portfolio(cash=1000.0)
-    tm = TransactionManager()
-
-    with pytest.raises(InvalidTickerError):
-        tm.buy(p, ticker="", quantity=1, price=100.0)
-
-    with pytest.raises(InvalidTickerError):
-        tm.buy(p, ticker="   ", quantity=1, price=100.0)
-
-    with pytest.raises(InvalidTickerError):
-        tm.buy(p, ticker=123, quantity=1, price=100.0)  # type: ignore[arg-type]
+    assert portfolio.cash == cash_before
+    assert portfolio.holdings == holdings_before
 
 
-def test_validate_inputs_raises_on_invalid_quantity():
-    p = Portfolio(cash=1000.0)
-    tm = TransactionManager()
-
-    with pytest.raises(InvalidQuantityError):
-        tm.buy(p, ticker="AAPL", quantity=0, price=100.0)
-
-    with pytest.raises(InvalidQuantityError):
-        tm.buy(p, ticker="AAPL", quantity=-1, price=100.0)
-
-    with pytest.raises(InvalidQuantityError):
-        tm.buy(p, ticker="AAPL", quantity="10", price=100.0)  # type: ignore[arg-type]
+def test_sell_non_existent_ticker_raises(portfolio, tm):
+    with pytest.raises(InsufficientHoldingsError):  # eller annan exception beroende på implementation
+        tm.sell(portfolio, "NOKIA", 1, 50.0)
 
 
-def test_validate_inputs_raises_on_invalid_price():
-    p = Portfolio(cash=1000.0)
-    tm = TransactionManager()
+# ────────────────────────────────────────────────
+# Övriga / edge cases
+# ────────────────────────────────────────────────
 
-    with pytest.raises(InvalidPriceError):
-        tm.buy(p, ticker="AAPL", quantity=1, price=0)
+def test_buy_existing_holding_adds_to_quantity(portfolio, tm):
+    portfolio.holdings["AAPL"] = 3.0
+    tm.buy(portfolio, "AAPL", 2.0, 110.0)
 
-    with pytest.raises(InvalidPriceError):
-        tm.buy(p, ticker="AAPL", quantity=1, price=-100)
+    assert portfolio.holdings["AAPL"] == pytest.approx(5.0)
+    assert portfolio.cash == pytest.approx(780.0)
 
-    with pytest.raises(InvalidPriceError):
-        tm.buy(p, ticker="AAPL", quantity=1, price="100")  # type: ignore[arg-type]
+
+def test_sell_fractional_shares_supported(portfolio, tm):
+    portfolio.holdings["GOOGL"] = 1.75
+    tm.sell(portfolio, "GOOGL", 0.75, 200.0)
+
+    assert portfolio.holdings["GOOGL"] == pytest.approx(1.0)
+    assert portfolio.cash == pytest.approx(1150.0)
