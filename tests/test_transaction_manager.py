@@ -24,7 +24,7 @@ def tm():
 
 
 # ────────────────────────────────────────────────
-# BUY-tester
+# BUY-tests
 # ────────────────────────────────────────────────
 
 def test_buy_successful_updates_portfolio_and_returns_transaction(portfolio, tm):
@@ -73,7 +73,7 @@ def test_buy_invalid_price_raises(portfolio, tm):
 
 
 # ────────────────────────────────────────────────
-# SELL-tester
+# SELL-tests
 # ────────────────────────────────────────────────
 
 def test_sell_successful_updates_portfolio_and_returns_transaction(portfolio, tm):
@@ -117,7 +117,7 @@ def test_sell_non_existent_ticker_raises(portfolio, tm):
 
 
 # ────────────────────────────────────────────────
-# Övriga / edge cases
+# Other / edge cases
 # ────────────────────────────────────────────────
 
 def test_buy_existing_holding_adds_to_quantity(portfolio, tm):
