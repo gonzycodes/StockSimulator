@@ -114,6 +114,20 @@ def test_sell_insufficient_holdings_raises_and_portfolio_unchanged(portfolio, tm
 def test_sell_non_existent_ticker_raises(portfolio, tm):
     with pytest.raises(InsufficientHoldingsError):  # eller annan exception beroende på implementation
         tm.sell(portfolio, "NOKIA", 1, 50.0)
+        
+        
+def test_sell_cannot_sell_more_then_owned_ac_case(portfolio, tm):
+    """Selling more than owned should raise and keep the portfolio unchanged."""
+    portfolio.holdings["AAPL"] = 1.0
+    cash_before = portfolio.cash
+    holdings_before = dict(portfolio.holdings)
+    
+    with pytest.raises(InsufficientHoldingsError):
+        tm.sell(portfolio, "AAPL", 2.0, 100.0)
+        
+    assert portfolio.cash == cash_before
+    assert portfolio.holdings == holdings_before
+    assert portfolio.holdings["AAPL"] == 1.0
 
 
 # ────────────────────────────────────────────────
