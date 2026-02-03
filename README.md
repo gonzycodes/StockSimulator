@@ -244,7 +244,25 @@ The interactive simulation loop is designed to be stable and never crash on expe
 - For **unexpected exceptions**, the app logs a full stacktrace (ERROR) and prints:
   `Unexpected error occurred.`
 
-After handling an error, the simulation loop continues and shows a new prompt.
+### Transaction history
+
+All buy and sell history saves automatically in  
+`data/transactions.json` (JSON-list with append).
+
+Example:
+```json
+[
+  {
+    "timestamp": "2026-02-03T13:45:12Z",
+    "side": "BUY",
+    "ticker": "ERIC-B.ST",
+    "quantity": 20.0,
+    "price": 95.0,
+    "total": 1900.0,
+    "cash_after": 8100.0
+  }
+]
+
 
 <!-- ROADMAP -->
 

@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-
 import pytest
 
 from src.portfolio import Portfolio
@@ -14,7 +13,7 @@ def test_portfolio_total_value():
     p = Portfolio()
     p.holdings["HM-B"] = 2
 
-    prices = {"HM-B": 100}
+    prices = {"HM-B": 100.0}
     assert p.total_value(prices) == 10200.0
 
 def test_buy_changes_balance():

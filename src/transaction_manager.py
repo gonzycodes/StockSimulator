@@ -2,7 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 from src.portfolio import Portfolio
-
+from src.transaction_logger import log_transaction
+from src.models.transaction import Transaction
 
 # =========================
 # Domain Exceptions
@@ -36,21 +37,6 @@ class InsufficientHoldingsError(TransactionError):
     """Raised when trying to sell more than owned."""
     pass
 
-
-# ==========================================================
-# Transaction result model
-# ==========================================================
-@dataclass(frozen=True)
-class Transaction:
-    """Represents a single completed transaction."""
-    kind: Literal['buy', 'sell'] # Type of transaction
-    ticker: str # Stock ticker symbol
-    quantity: float # Number of shares bought/sold
-    price: float # Price per share
-    gross_amount: float # Quantity * Price
-    cash_after: float # Cash balance after transaction
-
-
 # ===========================================================
 # Central class for managing transactions
 # ===========================================================
@@ -65,33 +51,19 @@ class TransactionManager:
             quantity: float,
             price: float
     ) -> Transaction:
-        """Processes a buy transaction:
-        - Validates inputs
-        - Checks available cash
-        - Updates portfolio
-        - Return Transaction result
-        """
-
-        # Validate basic input values
         self.validate_inputs(ticker, quantity, price)
-
-        # Total cost of purchase
+        
         gross_amount = quantity * price
-
-        # Ensure sufficient cash
+        
         if portfolio.cash < gross_amount:
             raise InsufficientFundsError(
                 f"Not enough cash to buy {quantity} shares of {ticker}."
             )
 
-        # Deduct cash from portfolio for purchase
         portfolio.cash -= gross_amount
-
-        # Add or increase holdings in portfolio
         portfolio.holdings[ticker] = portfolio.holdings.get(ticker, 0.0) + quantity
-
-        # Return transaction summary
-        return Transaction(
+        
+        tx = Transaction(
             kind='buy',
             ticker=ticker,
             quantity=quantity,
@@ -99,6 +71,9 @@ class TransactionManager:
             gross_amount=gross_amount,
             cash_after=portfolio.cash
         )
+        
+        log_transaction(tx)
+        return tx
     
 
     def sell(
@@ -108,40 +83,25 @@ class TransactionManager:
             quantity: float,
             price: float
     ) -> Transaction:
-        """Executes a sell transaction:
-        - Validates inputs
-        - Checks holdings
-        - Updates portfolio
-        - Return Transaction result
-        """
-
-        # Validate basic input values
         self.validate_inputs(ticker, quantity, price)
-
-        # Amount currently owned
+        
         owned = portfolio.holdings.get(ticker, 0.0)
-
-        # Ensure sufficient holdings to sell
+        
         if owned < quantity:
             raise InsufficientHoldingsError(
                 f"Not enough shares to sell {quantity} of {ticker}."
             )
         
-        # Total revenue from sale
         gross_amount = quantity * price
-
-        # Add cash to portfolio from sale
         portfolio.cash += gross_amount
-
-        # Update or remove holdings in portfolio
+        
         remaining = owned - quantity
         if remaining <= 0:
-            del portfolio.holdings[ticker] # Remove ticker if fully sold
+            portfolio.holdings.pop(ticker, None)
         else:
             portfolio.holdings[ticker] = remaining
-
-        # Return transaction summary
-        return Transaction(
+        
+        tx = Transaction(
             kind='sell',
             ticker=ticker,
             quantity=quantity,
@@ -149,6 +109,9 @@ class TransactionManager:
             gross_amount=gross_amount,
             cash_after=portfolio.cash
         )
+        
+        log_transaction(tx)
+        return tx
     
     
     # =========================
@@ -173,3 +136,37 @@ class TransactionManager:
         # Validate price
         if not isinstance(price, (int, float)) or price <= 0:
             raise InvalidPriceError("Price must be a positive number.")
+        
+if __name__ == "__main__":
+    from src.logger import init_logging_from_env
+    from src.portfolio import Portfolio
+    
+    # Starta loggning
+    init_logging_from_env()
+    
+    print("Starting test with buy and sell...\n")
+    
+    p = Portfolio(cash=10000.0)
+    tm = TransactionManager()
+    
+    # Test 1: Buy 20 stocks from ERIC-B.ST for 95 kr/each
+    try:
+        tx_buy = tm.buy(p, ticker="ERIC-B.ST", quantity=20, price=95.0)
+        print("buy completed!")
+        print(f"  Cash after transaction: {p.cash:.2f} kr")
+        print(f"  Holding after buy: {p.holdings}\n")
+    except Exception as e:
+        print("transaction failed:", e)
+    
+    # Test 2: Sell 8 stocks from ERIC-B.ST for 98 kr/each
+    try:
+        tx_sell = tm.sell(p, ticker="ERIC-B.ST", quantity=8, price=98.0)
+        print("Sell completed!")
+        print(f"  Cash after transaction: {p.cash:.2f} kr")
+        print(f"  Holding after sell: {p.holdings}\n")
+    except Exception as e:
+        print("transaction failed:", e)
+    
+    print("Control now:")
+    print("  • data/transactions.json   ← should have two posts (buy + sell)")
+    print("  • logs/app.log            ← shoyld have two INFO-lines")
