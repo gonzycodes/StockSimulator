@@ -10,11 +10,17 @@ import argparse
 import sys
 import json
 from pathlib import Path
+from typing import Dict
+
+from json import JSONDecodeError
 
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
 from src.portfolio import Portfolio
 from src.config import DATA_DIR
-from src.validators import validate_ticker, validate_positive_float, ValidationError
+from src.errors import FileError, ValidationError
+from src.validators import validate_ticker, validate_positive_float
+from src.formatters import format_portfolio_output
+
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
@@ -37,28 +43,37 @@ except Exception:  # pragma: no cover
 
     log = get_logger(__name__)
 
-def load_portfolio() -> Portfolio:
+def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
-    if not PORTFOLIO_FILE.exists():
+    if not path.exists():
         log.info("Portfolio file not found, creating new portfolio.")
         return Portfolio()
+
     try:
-        with open(PORTFOLIO_FILE, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            p = Portfolio()
-            p.cash = data.get("cash", 10000.0)
-            p.holdings = data.get("holdings", {})
-            return p
-    except Exception:
-        return Portfolio()
+
+        p = Portfolio()
+        p.cash = float(data.get("cash", 10000.0))
+        p.holdings = dict(data.get("holdings", {}))
+        return p
+
+    except (OSError, JSONDecodeError, ValueError, TypeError) as exc:
+        # Log full detail for debugging, show friendly error via FileError
+        log.warning("Failed to load portfolio file: %s", path, exc_info=True)
+        raise FileError(f"Could not read portfolio file: {path}") from exc
     
-def save_portfolio(portfolio: Portfolio) -> None:
-    """Save the portfolio to disk."""
+    
+def save_portfolio(portfolio: Portfolio, path: Path = PORTFOLIO_FILE) -> None:
+    """Save the portfolio to disk as JSON."""
     try:
-        with open(PORTFOLIO_FILE, "w") as f:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(portfolio.to_dict(), f, indent=4)
-    except Exception as e:
-        print(f"Error saving portfolio: {e}", file=sys.stderr)
+    except OSError as exc:
+        log.error("Failed to save portfolio file: %s", path, exc_info=True)
+        raise FileError(f"Could not save portfolio file: {path}") from exc
+
 
 def build_parser() -> argparse.ArgumentParser:
     """
@@ -76,7 +91,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
     s.add_argument("quantity", type=float, help="Number of shares to sell")
     
+    # Combined: Buy command (Yours)
+    b = sub.add_parser("buy", help="Buy an asset and add to the portfolio.")
+    b.add_argument("ticker", help="Ticker symbol to buy, e.g. AAPL")
+    b.add_argument("quantity", type=float, help="Number of shares to buy")
+    
+    # Combined: Portfolio command (Incoming from dev)
+    p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
+
     return parser
+
 
 def cmd_quote(ticker_raw: str) -> int:
     """
@@ -131,6 +155,47 @@ def cmd_quote(ticker_raw: str) -> int:
         log.exception("Unexpected CLI error")
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
+def cmd_buy(ticker_raw: str, quantity: float) -> int:
+    """
+    Execute the buy command.
+    """
+    try:
+        ticker = validate_ticker(ticker_raw)
+        valid_quantity = validate_positive_float(str(quantity))
+        
+        print(f"Fetching price for {ticker}...")
+        quote = fetch_latest_quote(ticker)
+        price = quote.price
+        
+        portfolio = load_portfolio()
+        portfolio.buy(ticker, valid_quantity, price)
+        
+        save_portfolio(portfolio)
+        
+        total_cost = valid_quantity * price
+        print(f"SUCCESS: Bought {valid_quantity} shares of {ticker} at {price:.2f}.")
+        print(f"Cost: {total_cost:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        
+        log.info(f"BOUGHT {ticker}: qty={valid_quantity} price={price} total={total_cost}")
+        return 0
+    
+    except ValidationError as e:
+        print(f"Input Error: {e}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"Transaction Failed: {exc}", file=sys.stderr)
+        return 1
+    except QuoteFetchError as exc:
+        print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during buy command")
+        print(f"System Error: {exc}", file=sys.stderr)
+        return 1
 
 def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
@@ -138,7 +203,6 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
     try:
         ticker = validate_ticker(ticker_raw)
-        
         valid_quantity = validate_positive_float(str(quantity))
 
         print(f"Fetching price for {ticker}...")
@@ -146,9 +210,7 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         price = quote.price
 
         portfolio = load_portfolio()
-
         portfolio.sell(ticker, valid_quantity, price)
-
         save_portfolio(portfolio)
 
         total_sale = valid_quantity * price
@@ -171,6 +233,31 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         log.exception("Unexpected error during sell command")
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
+def cmd_portfolio() -> int:
+    try:
+        portfolio = load_portfolio()
+        price_map: Dict[str, float] = {}
+        for ticker in portfolio.holdings.keys():
+            try:
+                quote = fetch_latest_quote(ticker)
+                price_map[ticker] = float(quote.price)
+            except QuoteFetchError as exc:
+                log.warning("Price fetch failed for %s: %s", ticker, exc)
+        output = format_portfolio_output(portfolio, price_map)
+        print(output)
+        return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during portfolio command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1        
+
 
 def main(argv: list[str] | None = None) -> int:
     """
@@ -187,6 +274,13 @@ def main(argv: list[str] | None = None) -> int:
         
         elif args.command == "sell":
             return cmd_sell(args.ticker, args.quantity)
+        
+        # Handled both cases here
+        elif args.command == "buy":
+            return cmd_buy(args.ticker, args.quantity)
+
+        elif args.command == "portfolio":
+            return cmd_portfolio()
         
         print("Error: Unknown command.", file=sys.stderr)
         return 0

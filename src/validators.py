@@ -2,12 +2,8 @@
 Central validation logic for user inputs.
 """
 
-class ValidationError(Exception):
-    """
-    Custom exception raised when input validation fails.
-    This allows us to distinguish between 'user errors' and 'system crashes'.
-    """
-    pass
+from src.errors import ValidationError
+
 
 def normalize_ticker(raw_ticker: str) -> str:
     """

@@ -101,17 +101,30 @@ class Portfolio:
         }
 
     def buy(self, ticker: str, quantity: float, price: float) -> None:
-        """Buy an asset and update cash/holdings + autosave."""
+        """
+        Buys a specified amount of a stock.
+        Updates cash, adds the ticker to holdings, and autosaves.
+        
+        Args:
+            ticker: The stock symbol (e.g., 'AAPL').
+            quantity: The amount of shares to buy.
+            price: The current market price per share.
+
+        Raises:
+            ValueError: If the user does not have enough cash.
+        """
         cost = quantity * price
+        
         if cost > self.cash:
-            raise ValueError("Not enough cash")
+            raise ValueError(f"Insufficient funds. Cost: {cost:.2f}, Cash: {self.cash:.2f}")
         
         self.cash -= cost
-        self.holdings[ticker] = self.holdings.get(ticker, 0) + quantity
         
-        # Autosave after purchase
+        current_qty = self.holdings.get(ticker, 0.0)
+        self.holdings[ticker] = current_qty + quantity
+        
         self.save()
-        log.info("Autosparade portfölj efter köp av %s (%.2f st)", ticker, quantity)
+        log.info("Autosaved portfolio after buying %s (%.2f units)", ticker, quantity)
         
     def sell(self, ticker: str, quantity: float, price: float) -> None:
         """Sell an asset and update cash/holdings + autosave."""
@@ -129,9 +142,8 @@ class Portfolio:
         if self.holdings[ticker] <= 0:
             del self.holdings[ticker]
         
-        # Autosave after sell
         self.save()
-        log.info("Autosparade portfölj efter försäljning av %s (%.2f st)", ticker, quantity)
+        log.info("Autosaved portfolio after selling %s (%.2f units)", ticker, quantity)
 
     def save(self, path: Path | None = None) -> bool:
         """Save portfolio to JSON. Returns True on success, False on error."""

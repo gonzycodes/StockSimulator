@@ -9,7 +9,6 @@ def test_portfolio_default_cash():
     p = Portfolio()
     assert p.cash == 10000.0
 
-
 def test_portfolio_total_value():
     p = Portfolio()
     p.holdings["HM-B"] = 2
@@ -17,13 +16,25 @@ def test_portfolio_total_value():
     prices = {"HM-B": 100.0}
     assert p.total_value(prices) == 10200.0
 
-
 def test_buy_changes_balance():
     p = Portfolio(cash=1000.0)
     p.buy("ERIC-B", quantity=2, price=100.0)
 
     assert p.cash == 800.0
     assert p.holdings["ERIC-B"] == 2
+    
+def test_buy_insufficient_funds():
+    p = Portfolio(cash=100.0)
+    
+    # Try to buy 10 shares at $20 each = $200 total
+    # Should raise ValueError due to insufficient funds
+    with pytest.raises(ValueError, match="Insufficient funds"):
+        p.buy("TSLA", quantity=10, price=20.0)
+        
+    # Double check that no changes were made
+    assert p.cash == 100.0
+    assert "TSLA" not in p.holdings
+    
     
 def test_sell_stock_success():
     """Test that selling increases cash and decreases holdings."""
