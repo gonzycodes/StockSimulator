@@ -151,13 +151,13 @@ def cmd_quote(ticker_raw: str) -> int:
     except QuoteFetchError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
     except Exception as exc:
         log.exception("Unexpected CLI error")
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
-    except FileError as exc:
-        print(f"File Error: {exc}", file=sys.stderr)
-        return 1
 
 def cmd_buy(ticker_raw: str, quantity: float) -> int:
     """
@@ -226,15 +226,15 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
     except ValueError as exc:
         print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
         return 1
     except Exception as exc:
         log.exception("Unexpected error during sell command")
         print(f"System Error: {exc}", file=sys.stderr)
-        return 1
-    except FileError as exc:
-        print(f"File Error: {exc}", file=sys.stderr)
         return 1
 
 def cmd_portfolio() -> int:

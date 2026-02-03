@@ -144,29 +144,29 @@ if __name__ == "__main__":
     # Starta loggning
     init_logging_from_env()
     
-    print("Startar test av köp och sälj...\n")
+    print("Starting test with buy and sell...\n")
     
     p = Portfolio(cash=10000.0)
     tm = TransactionManager()
     
-    # Test 1: Köp 20 aktier av ERIC-B.ST för 95 kr/st
+    # Test 1: Buy 20 stocks from ERIC-B.ST for 95 kr/each
     try:
         tx_buy = tm.buy(p, ticker="ERIC-B.ST", quantity=20, price=95.0)
-        print("Köp genomfört!")
-        print(f"  Cash efter köp: {p.cash:.2f} kr")
-        print(f"  Innehav: {p.holdings}\n")
+        print("buy completed!")
+        print(f"  Cash after transaction: {p.cash:.2f} kr")
+        print(f"  Holding after buy: {p.holdings}\n")
     except Exception as e:
-        print("Köp misslyckades:", e)
+        print("transaction failed:", e)
     
-    # Test 2: Sälj 8 aktier av ERIC-B.ST för 98 kr/st
+    # Test 2: Sell 8 stocks from ERIC-B.ST for 98 kr/each
     try:
         tx_sell = tm.sell(p, ticker="ERIC-B.ST", quantity=8, price=98.0)
-        print("Sälj genomfört!")
-        print(f"  Cash efter sälj: {p.cash:.2f} kr")
-        print(f"  Innehav efter sälj: {p.holdings}\n")
+        print("Sell completed!")
+        print(f"  Cash after transaction: {p.cash:.2f} kr")
+        print(f"  Holding after sell: {p.holdings}\n")
     except Exception as e:
-        print("Sälj misslyckades:", e)
+        print("transaction failed:", e)
     
-    print("Kontrollera nu:")
-    print("  • data/transactions.json   ← borde ha två poster (köp + sälj)")
-    print("  • logs/app.log            ← borde ha två INFO-rader")
+    print("Control now:")
+    print("  • data/transactions.json   ← should have two posts (buy + sell)")
+    print("  • logs/app.log            ← shoyld have two INFO-lines")

@@ -6,7 +6,7 @@ from src.models.transaction import Transaction
 
 log = get_logger(__name__)
 
-TRANSACTIONS_FILE = DATA_DIR / "transactions.json"  # från config
+TRANSACTIONS_FILE = DATA_DIR / "transactions.json"  # from config
 
 
 def log_transaction(tx: Transaction) -> bool:
@@ -21,7 +21,7 @@ def log_transaction(tx: Transaction) -> bool:
         "cash_after": tx.cash_after,
     }
 
-    # Ladda befintlig historik (eller börja tom)
+    # Load history or from scratch if none
     existing = []
     if TRANSACTIONS_FILE.is_file():
         try:
