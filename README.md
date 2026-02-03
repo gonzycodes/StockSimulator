@@ -153,6 +153,25 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+### Transaction history
+
+All buy and sell history saves automatically in  
+`data/transactions.json` (JSON-list with append).
+
+Example:
+```json
+[
+  {
+    "timestamp": "2026-02-03T13:45:12Z",
+    "side": "BUY",
+    "ticker": "ERIC-B.ST",
+    "quantity": 20.0,
+    "price": 95.0,
+    "total": 1900.0,
+    "cash_after": 8100.0
+  }
+]
+
 
 <!-- ROADMAP -->
 ## Roadmap
