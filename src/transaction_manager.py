@@ -67,15 +67,15 @@ class TransactionManager:
         portfolio.cash -= gross_amount
         portfolio.holdings[ticker] = portfolio.holdings.get(ticker, 0.0) + quantity
         if self.snapshot_store:
-         holdings_value = portfolio.holdings.get(ticker, 0.0) * price
-         self.snapshot_store.append_snapshot(
-            event="BUY",
-            ticker=ticker,
-            quantity=quantity,
-            price=price,
-            cash=portfolio.cash,
-            holdings_value=holdings_value,
-        )
+            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="BUY",
+                ticker=ticker,
+                quantity=quantity,
+                price=price,
+                cash=portfolio.cash,
+                holdings_value=holdings_value,
+            )
 
 
         # Return transaction summary

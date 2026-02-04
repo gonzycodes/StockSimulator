@@ -267,6 +267,10 @@ Example:
 ]
 ```
 
+## Snapshots
+After each successful trade (buy/sell), a snapshot is appended to `data/snapshots.csv`.
+
+
 <!-- ROADMAP -->
 
 ## Roadmap
