@@ -135,12 +135,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
             exc_info=True,
         )
     
-        # Försök fallback om vi har mock aktiverat eller vill använda den vid network-fel
+        # Try fallback if we have mock enabled or want to use it in case of network errors
         logger.warning("Network error...falling back to mock for %s", ticker)
         try:
             return _quote_from_mock(ticker)
         except QuoteFetchError:
-            # Om mock inte går att använda: kasta korrekt NETWORK error
+            # If mock cannot be used: throw correct network error
             raise QuoteFetchError(
                 "Network error while fetching market data.",
                 code=FetchErrorCode.NETWORK,
@@ -264,5 +264,41 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
         return None
     except Exception:
         return None
+
+
+def _quote_from_mock(ticker: str) -> Quote:
+    """
+    Load a quote for the given ticker from the mock prices file.
+    """
+    ticker = _validate_ticker(ticker)
+    
+    try:
+        with open(MOCK_PRICES_FILE, 'r') as f:
+            mock_data = json.load(f)
+        
+        if ticker not in mock_data:
+            raise QuoteFetchError(
+                f"Ticker '{ticker}' not found in mock data.",
+                code=FetchErrorCode.NOT_FOUND,
+            )
+        
+        quote_data = mock_data[ticker]
+        return Quote(
+            ticker=ticker,
+            price=float(quote_data['price']),
+            currency=quote_data.get('currency', 'USD'),
+            timestamp=datetime.now(timezone.utc),
+            company_name=quote_data.get('company_name'),
+            price_sek=quote_data.get('price_sek'),
+            fx_pair=quote_data.get('fx_pair'),
+            fx_rate_to_sek=quote_data.get('fx_rate_to_sek'),
+        )
+    except QuoteFetchError:
+        raise
+    except Exception as exc:
+        raise QuoteFetchError(
+            f"Could not load mock data for ticker '{ticker}'.",
+            code=FetchErrorCode.UNKNOWN,
+        ) from exc
     
     
