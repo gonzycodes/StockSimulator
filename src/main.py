@@ -20,12 +20,16 @@ from src.errors import ValidationError, FileError
 from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
 from src.portfolio import Portfolio
 from src.cli import load_portfolio, save_portfolio, validate_ticker
+from src.snapshot_store import SnapshotStore
+from src.transaction_manager import TransactionManager, TransactionError
 
 
 log = get_logger(__name__)
+tm = TransactionManager(snapshot_store=SnapshotStore())
 
 SIM_COMMANDS: list[tuple[str, str]] = [
     ("quote <TICKER>", "Show latest price for a ticker"),
+    ("buy <TICKER> <QTY>", "Buy shares into your portfolio"),
     ("sell <TICKER> <QTY>", "Sell shares from your portfolio"),
     ("portfolio", "Show cash and holdings"),
     ("help | ?", "Show available commands"),
@@ -134,6 +138,31 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         quote = deps.fetch_quote(ticker)
         _print_quote(ticker, quote)
         return True
+    
+    if cmd == "buy":
+        if len(tokens) != 3:
+            raise ValidationError("Usage: buy <TICKER> <QTY>")
+        ticker = validate_ticker(tokens[1])
+
+        try:
+            qty = float(tokens[2])
+        except ValueError as exc:
+            raise ValidationError("Quantity must be a number.") from exc
+
+        if qty <= 0:
+            raise ValidationError("Quantity must be greater than 0.")
+
+        quote = deps.fetch_quote(ticker)
+        price = float(quote.price)
+
+        tm.buy(state.portfolio, ticker, qty, price)
+        deps.save_pf(state.portfolio)
+
+        total = qty * price
+        print(f"SUCCESS: Bought {qty} shares of {ticker} at {price:.2f}.")
+        print(f"Cost: {total:.2f}. New Cash Balance: {state.portfolio.cash:.2f}")
+        log.info("BOUGHT %s qty=%s price=%s total=%s", ticker, qty, price, total)
+        return True
 
     if cmd == "sell":
         if len(tokens) != 3:
@@ -151,7 +180,7 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         quote = deps.fetch_quote(ticker)
         price = float(quote.price)
 
-        state.portfolio.sell(ticker, qty, price)
+        tm.sell(state.portfolio, ticker, qty, price)
         deps.save_pf(state.portfolio)
 
         total = qty * price
@@ -190,6 +219,10 @@ def safe_dispatch(line: str, state: SimState, deps: SimDeps) -> bool:
             print(f"Market error: Network issue while fetching data. ({exc})")
         else:
             print(f"Market error: {exc}")
+        return True
+    
+    except TransactionError as exc:
+        print(f"Transaction error: {exc}")
         return True
 
     except Exception:

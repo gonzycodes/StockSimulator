@@ -192,6 +192,8 @@ Or directly via the CLI module:
 ```bash
 python -m src.cli quote AAPL
 python -m src.cli sell AAPL 2
+python -m src.cli save
+python -m src.cli load
 ```
 
 Optional log level:
@@ -250,6 +252,7 @@ All buy and sell history saves automatically in
 `data/transactions.json` (JSON-list with append).
 
 Example:
+
 ```json
 [
   {
@@ -262,6 +265,10 @@ Example:
     "cash_after": 8100.0
   }
 ]
+```
+
+## Snapshots
+After each successful trade (buy/sell), a snapshot is appended to `data/snapshots.csv`.
 
 
 <!-- ROADMAP -->

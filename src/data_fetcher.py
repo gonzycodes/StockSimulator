@@ -5,12 +5,18 @@ Helpers for fetching market data (quotes, candles, etc.).
 """
 
 from __future__ import annotations
-from enum import Enum
+
+import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import logging
+from enum import Enum
+from pathlib import Path
 from typing import Optional
 import yfinance as yf
+
+from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
+
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +125,7 @@ def fetch_latest_quote(ticker: str) -> Quote:
             fx_rate_to_sek=fx_rate,
         )
     
-    except QuoteFetchError:
+    except QuoteFetchError as exc:
         raise
 
     except Exception as exc:
@@ -128,10 +134,19 @@ def fetch_latest_quote(ticker: str) -> Quote:
             ticker,
             exc_info=True,
         )
-        raise QuoteFetchError(
-            "Network error while fetching market data.",
-            code=FetchErrorCode.NETWORK,
-        ) from exc
+    
+        # Försök fallback om vi har mock aktiverat eller vill använda den vid network-fel
+        logger.warning("Network error...falling back to mock for %s", ticker)
+        try:
+            return _quote_from_mock(ticker)
+        except QuoteFetchError:
+            # Om mock inte går att använda: kasta korrekt NETWORK error
+            raise QuoteFetchError(
+                "Network error while fetching market data.",
+                code=FetchErrorCode.NETWORK,
+            ) from exc
+
+
 
     
     
