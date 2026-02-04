@@ -40,6 +40,10 @@ def price_provider(price_map):
 def tm(portfolio, price_provider):
     return TransactionManager(portfolio=portfolio, price_provider=price_provider)
 
+@pytest.fixture(autouse=True)
+def mock_market_open(monkeypatch):
+    monkeypatch.setattr("src.data_fetcher.is_market_likely_open", lambda t: True)
+    monkeypatch.setattr("src.data_fetcher.get_market_state", lambda t: "REGULAR")
 
 # ────────────────────────────────────────────────
 # BUY-tests

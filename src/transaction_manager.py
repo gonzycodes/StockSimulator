@@ -36,6 +36,10 @@ class PriceFetchError(TransactionError):
     """Raised when price provider/data fetcher fails."""
 
 
+class MarketClosedError(TransactionError):
+    """Raised when attempting to trade outside regular market hours."""
+
+
 class InsufficientFundsError(TransactionError):
     """Raised when there is not enough cash to buy."""
 
@@ -45,6 +49,8 @@ class InsufficientHoldingsError(TransactionError):
 
 
 PriceProvider = Callable[[str], float]
+MarketOpenCheck = Callable[[str], bool]
+MarketStateProvider = Callable[[str], str]
 
 
 class TransactionManager:
@@ -54,6 +60,7 @@ class TransactionManager:
     - No I/O (no input/print).
     - Price lookup is injected (mockable).
     - Validates via src.validators.
+    - Optional market open check (injectable) to support MarketClosedError.
     """
 
     def __init__(
@@ -63,12 +70,17 @@ class TransactionManager:
         price_provider: PriceProvider | None = None,
         logger: logging.Logger | None = None,
         snapshot_store: SnapshotStore | None = None,
+        market_open_check: MarketOpenCheck | None = None,
+        market_state_provider: MarketStateProvider | None = None,
     ) -> None:
         self.portfolio = portfolio
         self.price_provider = price_provider or self._default_price_provider
         self.log = logger or get_logger(__name__)
         self.snapshot_store = snapshot_store
 
+        # Optional: enables MarketClosedError when provided
+        self.market_open_check = market_open_check
+        self.market_state_provider = market_state_provider
 
     # -------------------------
     # Public API (AC)
@@ -76,6 +88,8 @@ class TransactionManager:
     def buy(self, ticker: str, amount: float) -> Transaction:
         clean_ticker = self._validate_ticker(ticker)
         qty = self._validate_quantity(amount)
+
+        self._ensure_market_open(clean_ticker)
 
         price = self._get_price(clean_ticker)
         total_cost = qty * price
@@ -121,13 +135,13 @@ class TransactionManager:
             tx.timestamp,
             tx.cash_after,
         )
-        
         return tx
-
 
     def sell(self, ticker: str, amount: float) -> Transaction:
         clean_ticker = self._validate_ticker(ticker)
         qty = self._validate_quantity(amount)
+
+        self._ensure_market_open(clean_ticker)
 
         owned = self.portfolio.holdings.get(clean_ticker, 0.0)
         if owned < qty:
@@ -179,18 +193,41 @@ class TransactionManager:
             tx.timestamp,
             tx.cash_after,
         )
-        
         return tx
-
 
     # -------------------------
     # Internals
     # -------------------------
+    def _ensure_market_open(self, ticker: str) -> None:
+        """
+        Optional market-hours gate.
+        Only enforced when a market_open_check is provided.
+        """
+        if self.market_open_check is None:
+            return
+
+        try:
+            is_open = bool(self.market_open_check(ticker))
+        except Exception as exc:
+            # Fail-open to avoid random blocking if check fails
+            self.log.warning("Market open check failed for %s: %s", ticker, exc, exc_info=True)
+            return
+
+        if not is_open:
+            state = ""
+            if self.market_state_provider is not None:
+                try:
+                    state = str(self.market_state_provider(ticker))
+                except Exception:
+                    state = ""
+            msg = f"Cannot trade {ticker} - market is not in regular trading hours"
+            if state:
+                msg += f" (current state: {state})"
+            raise MarketClosedError(msg)
+
     def _default_price_provider(self, ticker: str) -> float:
         quote = fetch_latest_quote(ticker)
-        
         return float(quote.price)
-
 
     def _get_price(self, ticker: str) -> float:
         try:
@@ -209,7 +246,6 @@ class TransactionManager:
 
         return price_f
 
-
     def _validate_ticker(self, ticker: object) -> str:
         if not isinstance(ticker, str):
             raise InvalidTickerError("Ticker must be a non-empty string.")
@@ -217,7 +253,6 @@ class TransactionManager:
             return validate_ticker(ticker)
         except ValidationError as exc:
             raise InvalidTickerError(str(exc)) from exc
-
 
     def _validate_quantity(self, qty: object) -> float:
         try:

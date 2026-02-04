@@ -9,6 +9,7 @@ from src.transaction_manager import (
     InvalidQuantityError,
     InvalidPriceError,
     PriceFetchError,
+    MarketClosedError,
     InsufficientFundsError,
     InsufficientHoldingsError,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "InvalidQuantityError",
     "InvalidPriceError",
     "PriceFetchError",
+    "MarketClosedError",
     "InsufficientFundsError",
     "InsufficientHoldingsError",
 ]

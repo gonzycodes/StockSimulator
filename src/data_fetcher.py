@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-
 import yfinance as yf
 
 from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
@@ -21,41 +20,28 @@ from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
 
 logger = logging.getLogger(__name__)
 
-def load_mock_prices(path: Path = MOCK_PRICES_FILE) -> dict[str, dict]:
-    """Load mock prices from JSON file. Returns empty dict if missing."""
+
+def get_market_state(ticker: str) -> str:
+    """
+    Fetch the current market state from yfinance.
+    Returns 'REGULAR', 'CLOSED', 'PRE', 'POST', 'PREPRE', etc.
+    Returns 'UNKNOWN' if fetch fails.
+    """
     try:
-        if not path.exists():
-            logger.warning("Mock price file not found: %s", path)
-            return {}
-        
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    
-    except (OSError, json.JSONDecodeError):
-        logger.error("Failed to read mock price file: %s", path, exc_info=True)
-        return {}
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info
+        state = info.get('marketState', 'UNKNOWN')
+        return state
+    except Exception:
+        logger.warning("Could not fetch marketState for %s", ticker, exc_info=True)
+        return 'UNKNOWN'
 
-def _quote_from_mock(ticker: str) -> Quote:
-    """Create a Quote using mock price data."""
-    mock_data = load_mock_prices()
-
-    if ticker not in mock_data:
-        raise QuoteFetchError(f"No mock price for ticker: {ticker}")
-
-    entry = mock_data[ticker]
-    price = float(entry["price"])
-
-    print("Using mock data")
-    logger.info("Using mock data for %s", ticker)
-
-    return Quote(
-        ticker=ticker,
-        price=price,
-        currency="MOCK",
-        timestamp=datetime.now(timezone.utc),
-        company_name=None,
-    )
-
+def is_market_likely_open(ticker: str) -> bool:
+    """
+    Returns True if marketState indicates regular trading hours.
+    """
+    state =get_market_state(ticker)
+    return state == 'REGULAR' 
 class FetchErrorCode(str, Enum):
     VALIDATION = "VALIDATION"
     NOT_FOUND = "NOT_FOUND"
@@ -99,8 +85,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
     Fetch the latest price for a ticker using yfinance.
     """
     ticker = _validate_ticker(ticker)
-    if USE_MOCK_DATA:
-        return _quote_from_mock(ticker)
+
+    if not is_market_likely_open(ticker):
+        print("Warning: Market appears to be closed for this ticker - showing last known price")
+        logger.info("Market likely closed for ticker: %s (marketState: %s)",
+                    ticker, get_market_state(ticker))
+
     try:
         yf_ticker = yf.Ticker(ticker)
         
@@ -145,12 +135,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
             exc_info=True,
         )
     
-        # Försök fallback om vi har mock aktiverat eller vill använda den vid network-fel
+        # Try fallback if we have mock enabled or want to use it in case of network errors
         logger.warning("Network error...falling back to mock for %s", ticker)
         try:
             return _quote_from_mock(ticker)
         except QuoteFetchError:
-            # Om mock inte går att använda: kasta korrekt NETWORK error
+            # If mock cannot be used: throw correct network error
             raise QuoteFetchError(
                 "Network error while fetching market data.",
                 code=FetchErrorCode.NETWORK,
@@ -274,5 +264,62 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
         return None
     except Exception:
         return None
+
+def load_mock_prices(path: Path) -> dict:
+    """
+    Load mock prices from a JSON file for testing.
+    Returns a dict like {"AAPL": {"price": 123.45, "updated_at": "..."}}
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Mock prices file not found: {path}")
+    
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in mock prices file {path}: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load mock prices from {path}: {e}")
+
+def _quote_from_mock(ticker: str) -> Quote:
+    """
+    Fetch a quote from mock data file.
+    """
+    ticker = _validate_ticker(ticker)
+    
+    try:
+        if not MOCK_PRICES_FILE.exists():
+            raise QuoteFetchError(
+                f"Mock prices file not found: {MOCK_PRICES_FILE}",
+                code=FetchErrorCode.NOT_FOUND,
+            )
+        
+        with open(MOCK_PRICES_FILE, 'r') as f:
+            mock_data = json.load(f)
+        
+        if ticker not in mock_data:
+            raise QuoteFetchError(
+                f"Ticker '{ticker}' not found in mock data",
+                code=FetchErrorCode.NOT_FOUND,
+            )
+        
+        quote_data = mock_data[ticker]
+        return Quote(
+            ticker=ticker,
+            price=float(quote_data.get("price", 0)),
+            currency=quote_data.get("currency", "UNKNOWN"),
+            timestamp=datetime.now(timezone.utc),
+            company_name=quote_data.get("company_name"),
+            price_sek=quote_data.get("price_sek"),
+            fx_pair=quote_data.get("fx_pair"),
+            fx_rate_to_sek=quote_data.get("fx_rate_to_sek"),
+        )
+    except QuoteFetchError:
+        raise
+    except Exception as exc:
+        raise QuoteFetchError(
+            f"Error reading mock data for '{ticker}'",
+            code=FetchErrorCode.UNKNOWN,
+        ) from exc
     
     
