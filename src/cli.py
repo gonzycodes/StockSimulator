@@ -20,6 +20,8 @@ from src.config import DATA_DIR
 from src.errors import FileError, ValidationError
 from src.validators import validate_ticker, validate_positive_float
 from src.formatters import format_portfolio_output
+from src.snapshot_store import SnapshotStore
+from src.transaction_manager import TransactionManager, TransactionError
 
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
@@ -29,6 +31,8 @@ try:
     from src.logger import init_logging, get_logger  # type: ignore
 
     log = get_logger(__name__)
+    tm = TransactionManager(snapshot_store=SnapshotStore())
+    
 except Exception:  # pragma: no cover
     # Fallback if src.logger is not available yet
     import logging
@@ -42,6 +46,7 @@ except Exception:  # pragma: no cover
         return logging.getLogger(name)
 
     log = get_logger(__name__)
+
 
 def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
@@ -165,47 +170,51 @@ def cmd_quote(ticker_raw: str) -> int:
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
 
+
 def cmd_buy(ticker_raw: str, quantity: float) -> int:
     """
     Execute the buy command.
+    Uses TransactionManager so transaction history + snapshots are written consistently.
     """
     try:
         ticker = validate_ticker(ticker_raw)
         valid_quantity = validate_positive_float(str(quantity))
-        
+
         print(f"Fetching price for {ticker}...")
         quote = fetch_latest_quote(ticker)
-        price = quote.price
-        
+        price = float(quote.price)
+
         portfolio = load_portfolio()
-        portfolio.buy(ticker, valid_quantity, price)
-        
+        tx = tm.buy(portfolio, ticker, valid_quantity, price)
         save_portfolio(portfolio)
-        
-        total_cost = valid_quantity * price
-        print(f"SUCCESS: Bought {valid_quantity} shares of {ticker} at {price:.2f}.")
-        print(f"Cost: {total_cost:.2f}. New Cash Balance: {portfolio.cash:.2f}")
-        
-        log.info(f"BOUGHT {ticker}: qty={valid_quantity} price={price} total={total_cost}")
+
+        print(f"SUCCESS: Bought {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
+        print(f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        log.info("BOUGHT %s qty=%s price=%s total=%s", ticker, valid_quantity, price, tx.gross_amount)
         return 0
-    
+
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
         return 1
-    except ValueError as exc:
+    except TransactionError as exc:
         print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+        return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
         log.exception("Unexpected error during buy command")
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
 
+
 def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
     Execute the sell command.
+    Uses TransactionManager so transaction history + snapshots are written consistently.
     """
     try:
         ticker = validate_ticker(ticker_raw)
@@ -213,35 +222,34 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
 
         print(f"Fetching price for {ticker}...")
         quote = fetch_latest_quote(ticker)
-        price = quote.price
+        price = float(quote.price)
 
         portfolio = load_portfolio()
-        portfolio.sell(ticker, valid_quantity, price)
+        tx = tm.sell(portfolio, ticker, valid_quantity, price)
         save_portfolio(portfolio)
 
-        total_sale = valid_quantity * price
-        print(f"SUCCESS: Sold {valid_quantity} shares of {ticker} at {price:.2f}.")
-        print(f"Proceeds: {total_sale:.2f}. New Cash Balance: {portfolio.cash:.2f}")
-        
-        log.info(f"SOLD {ticker}: qty={valid_quantity} price={price} total={total_sale}")
+        print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
+        print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        log.info("SOLD %s qty=%s price=%s total=%s", ticker, valid_quantity, price, tx.gross_amount)
         return 0
 
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
         return 1
-    except ValueError as exc:
+    except TransactionError as exc:
         print(f"Transaction Failed: {exc}", file=sys.stderr)
-        return 1
-    except FileError as exc:
-        print(f"File Error: {exc}", file=sys.stderr)
         return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+        return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
         log.exception("Unexpected error during sell command")
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
+
 
 def cmd_portfolio() -> int:
     try:
