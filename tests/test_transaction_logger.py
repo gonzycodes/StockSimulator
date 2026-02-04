@@ -1,11 +1,8 @@
 import json
-from pathlib import Path
 import pytest
 
 from src.transaction_manager import TransactionManager
 from src.portfolio import Portfolio
-from src.transaction_logger import log_transaction, TRANSACTIONS_FILE
-from src.models.transaction import Transaction
 
 
 @pytest.fixture
@@ -14,27 +11,39 @@ def portfolio():
 
 
 @pytest.fixture
-def tm():
-    return TransactionManager()
+def price_map():
+    # Mutable map so each test can set deterministic prices.
+    return {
+        "AAPL": 150.0,
+        "TSLA": 200.0,
+        "HM-B.ST": 120.0,
+    }
+
+
+@pytest.fixture
+def tm(portfolio, price_map):
+    def price_provider(ticker: str) -> float:
+        return float(price_map[ticker])
+
+    return TransactionManager(portfolio=portfolio, price_provider=price_provider)
 
 
 @pytest.fixture
 def temp_transactions_file(tmp_path, monkeypatch):
-    """Använd en temporär fil istället för den riktiga"""
+    """Use a temporary file instead of the real one."""
     fake_file = tmp_path / "transactions.json"
     monkeypatch.setattr("src.transaction_logger.TRANSACTIONS_FILE", fake_file)
     return fake_file
 
 
-def test_buy_appends_to_transaction_history(portfolio, tm, temp_transactions_file):
-    tx = tm.buy(portfolio, ticker="AAPL", quantity=10.0, price=150.0)
+def test_buy_appends_to_transaction_history(portfolio, tm, price_map, temp_transactions_file):
+    price_map["AAPL"] = 150.0
+    tx = tm.buy("AAPL", 10.0)
 
     assert portfolio.cash == pytest.approx(8500.0)
     assert portfolio.holdings["AAPL"] == pytest.approx(10.0)
 
-    # Kolla att filen skapades och har en post
     assert temp_transactions_file.exists()
-
     with temp_transactions_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -47,18 +56,16 @@ def test_buy_appends_to_transaction_history(portfolio, tm, temp_transactions_fil
     assert data[0]["cash_after"] == pytest.approx(8500.0)
 
 
-def test_sell_appends_to_transaction_history(portfolio, tm, temp_transactions_file):
-    # Förbered innehav först
+def test_sell_appends_to_transaction_history(portfolio, tm, price_map, temp_transactions_file):
     portfolio.holdings["AAPL"] = 15.0
 
-    tx = tm.sell(portfolio, ticker="AAPL", quantity=6.0, price=160.0)
+    price_map["AAPL"] = 160.0
+    tx = tm.sell("AAPL", 6.0)
 
     assert portfolio.cash == pytest.approx(10960.0)
     assert portfolio.holdings["AAPL"] == pytest.approx(9.0)
 
-    # Kolla historiken
     assert temp_transactions_file.exists()
-
     with temp_transactions_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -71,15 +78,15 @@ def test_sell_appends_to_transaction_history(portfolio, tm, temp_transactions_fi
     assert data[0]["cash_after"] == pytest.approx(10960.0)
 
 
-def test_sell_completely_removes_ticker(portfolio, tm, temp_transactions_file):
+def test_sell_completely_removes_ticker(portfolio, tm, price_map, temp_transactions_file):
     portfolio.holdings["TSLA"] = 5.0
 
-    tm.sell(portfolio, "TSLA", 5.0, 200.0)
+    price_map["TSLA"] = 200.0
+    tm.sell("TSLA", 5.0)
 
     assert "TSLA" not in portfolio.holdings
     assert portfolio.cash == pytest.approx(11000.0)
 
-    # Kolla att transaktionen loggades
     with temp_transactions_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -88,15 +95,15 @@ def test_sell_completely_removes_ticker(portfolio, tm, temp_transactions_file):
     assert data[0]["quantity"] == 5.0
 
 
-def test_append_multiple_transactions(portfolio, tm, temp_transactions_file):
+def test_append_multiple_transactions(portfolio, tm, price_map, temp_transactions_file):
     start_cash = portfolio.cash  # 10000.0
 
-    # Köp 30 st @ 120 kr → kostar 3600
-    tm.buy(portfolio, "HM-B.ST", 30, 120.0)
+    price_map["HM-B.ST"] = 120.0
+    tm.buy("HM-B.ST", 30.0)
     cash_after_buy = start_cash - (30 * 120)  # 6400.0
 
-    # Sälj 10 st @ 125 kr → ger 1250
-    tm.sell(portfolio, "HM-B.ST", 10, 125.0)
+    price_map["HM-B.ST"] = 125.0
+    tm.sell("HM-B.ST", 10.0)
     cash_after_sell = cash_after_buy + (10 * 125)  # 7650.0
 
     with temp_transactions_file.open("r", encoding="utf-8") as f:
@@ -105,7 +112,6 @@ def test_append_multiple_transactions(portfolio, tm, temp_transactions_file):
     assert len(data) == 2
     assert data[0]["side"] == "BUY"
     assert data[1]["side"] == "SELL"
-    
-    # Kontrollera cash_after från JSON
+
     assert data[0]["cash_after"] == pytest.approx(cash_after_buy)
     assert data[1]["cash_after"] == pytest.approx(cash_after_sell)
