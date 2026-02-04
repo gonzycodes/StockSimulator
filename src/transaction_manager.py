@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 from src.portfolio import Portfolio
+from src.snapshot_store import SnapshotStore
 
 
 # =========================
@@ -57,6 +58,8 @@ class Transaction:
 
 class TransactionManager:
     """Manages buy/sell transactions for a portfolio."""
+    def __init__(self, snapshot_store: SnapshotStore | None = None) -> None:
+        self.snapshot_store = snapshot_store
 
     def buy(
             self,
@@ -89,6 +92,17 @@ class TransactionManager:
 
         # Add or increase holdings in portfolio
         portfolio.holdings[ticker] = portfolio.holdings.get(ticker, 0.0) + quantity
+        if self.snapshot_store:
+         holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+         self.snapshot_store.append_snapshot(
+            event="BUY",
+            ticker=ticker,
+            quantity=quantity,
+            price=price,
+            cash=portfolio.cash,
+            holdings_value=holdings_value,
+        )
+
 
         # Return transaction summary
         return Transaction(
@@ -139,6 +153,18 @@ class TransactionManager:
             del portfolio.holdings[ticker] # Remove ticker if fully sold
         else:
             portfolio.holdings[ticker] = remaining
+        
+        if self.snapshot_store:
+            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="SELL",
+                ticker=ticker,
+                quantity=quantity,
+                price=price,
+                cash=portfolio.cash,
+                holdings_value=holdings_value,
+            )
+
 
         # Return transaction summary
         return Transaction(

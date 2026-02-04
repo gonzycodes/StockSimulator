@@ -20,9 +20,12 @@ from src.errors import ValidationError, FileError
 from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
 from src.portfolio import Portfolio
 from src.cli import load_portfolio, save_portfolio, validate_ticker
+from src.snapshot_store import SnapshotStore
+from src.transaction_manager import TransactionManager
 
 
 log = get_logger(__name__)
+tm = TransactionManager(snapshot_store=SnapshotStore())
 
 SIM_COMMANDS: list[tuple[str, str]] = [
     ("quote <TICKER>", "Show latest price for a ticker"),
