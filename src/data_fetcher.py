@@ -265,39 +265,60 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
     except Exception:
         return None
 
+def load_mock_prices(path: Path) -> dict:
+    """
+    Load mock prices from a JSON file for testing.
+    Returns a dict like {"AAPL": {"price": 123.45, "updated_at": "..."}}
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Mock prices file not found: {path}")
+    
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in mock prices file {path}: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load mock prices from {path}: {e}")
 
 def _quote_from_mock(ticker: str) -> Quote:
     """
-    Load a quote for the given ticker from the mock prices file.
+    Fetch a quote from mock data file.
     """
     ticker = _validate_ticker(ticker)
     
     try:
+        if not MOCK_PRICES_FILE.exists():
+            raise QuoteFetchError(
+                f"Mock prices file not found: {MOCK_PRICES_FILE}",
+                code=FetchErrorCode.NOT_FOUND,
+            )
+        
         with open(MOCK_PRICES_FILE, 'r') as f:
             mock_data = json.load(f)
         
         if ticker not in mock_data:
             raise QuoteFetchError(
-                f"Ticker '{ticker}' not found in mock data.",
+                f"Ticker '{ticker}' not found in mock data",
                 code=FetchErrorCode.NOT_FOUND,
             )
         
         quote_data = mock_data[ticker]
         return Quote(
             ticker=ticker,
-            price=float(quote_data['price']),
-            currency=quote_data.get('currency', 'USD'),
+            price=float(quote_data.get("price", 0)),
+            currency=quote_data.get("currency", "UNKNOWN"),
             timestamp=datetime.now(timezone.utc),
-            company_name=quote_data.get('company_name'),
-            price_sek=quote_data.get('price_sek'),
-            fx_pair=quote_data.get('fx_pair'),
-            fx_rate_to_sek=quote_data.get('fx_rate_to_sek'),
+            company_name=quote_data.get("company_name"),
+            price_sek=quote_data.get("price_sek"),
+            fx_pair=quote_data.get("fx_pair"),
+            fx_rate_to_sek=quote_data.get("fx_rate_to_sek"),
         )
     except QuoteFetchError:
         raise
     except Exception as exc:
         raise QuoteFetchError(
-            f"Could not load mock data for ticker '{ticker}'.",
+            f"Error reading mock data for '{ticker}'",
             code=FetchErrorCode.UNKNOWN,
         ) from exc
     

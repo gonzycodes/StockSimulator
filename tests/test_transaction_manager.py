@@ -22,6 +22,10 @@ def tm():
     """TransactionManager-instans."""
     return TransactionManager()
 
+@pytest.fixture(autouse=True)
+def mock_market_open(monkeypatch):
+    monkeypatch.setattr("src.data_fetcher.is_market_likely_open", lambda t: True)
+    monkeypatch.setattr("src.data_fetcher.get_market_state", lambda t: "REGULAR")
 
 # ────────────────────────────────────────────────
 # BUY-tests
@@ -111,10 +115,12 @@ def test_sell_insufficient_holdings_raises_and_portfolio_unchanged(portfolio, tm
     assert portfolio.holdings == holdings_before
 
 
-def test_sell_non_existent_ticker_raises(portfolio, tm):
-    with pytest.raises(InsufficientHoldingsError):  # or other exception
+def test_sell_non_existent_ticker_raises(portfolio, tm, monkeypatch):
+    monkeypatch.setattr("src.data_fetcher.is_market_likely_open", lambda ticker: True)
+    monkeypatch.setattr("src.data_fetcher.get_market_state", lambda ticker: "REGULAR")
+
+    with pytest.raises(InsufficientHoldingsError):
         tm.sell(portfolio, "NOKIA", 1, 50.0)
-        
         
 def test_sell_cannot_sell_more_then_owned_ac_case(portfolio, tm):
     """Selling more than owned should raise and keep the portfolio unchanged."""
