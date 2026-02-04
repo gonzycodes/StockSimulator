@@ -5,15 +5,56 @@ Helpers for fetching market data (quotes, candles, etc.).
 """
 
 from __future__ import annotations
-from enum import Enum
+
+import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import logging
+from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 import yfinance as yf
 
+from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
+
+
 logger = logging.getLogger(__name__)
+
+def load_mock_prices(path: Path = MOCK_PRICES_FILE) -> dict[str, dict]:
+    """Load mock prices from JSON file. Returns empty dict if missing."""
+    try:
+        if not path.exists():
+            logger.warning("Mock price file not found: %s", path)
+            return {}
+        
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    
+    except (OSError, json.JSONDecodeError):
+        logger.error("Failed to read mock price file: %s", path, exc_info=True)
+        return {}
+
+def _quote_from_mock(ticker: str) -> Quote:
+    """Create a Quote using mock price data."""
+    mock_data = load_mock_prices()
+
+    if ticker not in mock_data:
+        raise QuoteFetchError(f"No mock price for ticker: {ticker}")
+
+    entry = mock_data[ticker]
+    price = float(entry["price"])
+
+    print("Using mock data")
+    logger.info("Using mock data for %s", ticker)
+
+    return Quote(
+        ticker=ticker,
+        price=price,
+        currency="MOCK",
+        timestamp=datetime.now(timezone.utc),
+        company_name=None,
+    )
 
 class FetchErrorCode(str, Enum):
     VALIDATION = "VALIDATION"
@@ -58,6 +99,8 @@ def fetch_latest_quote(ticker: str) -> Quote:
     Fetch the latest price for a ticker using yfinance.
     """
     ticker = _validate_ticker(ticker)
+    if USE_MOCK_DATA:
+        return _quote_from_mock(ticker)
     try:
         yf_ticker = yf.Ticker(ticker)
         
@@ -92,7 +135,7 @@ def fetch_latest_quote(ticker: str) -> Quote:
             fx_rate_to_sek=fx_rate,
         )
     
-    except QuoteFetchError:
+    except QuoteFetchError as exc:
         raise
 
     except Exception as exc:
@@ -101,10 +144,19 @@ def fetch_latest_quote(ticker: str) -> Quote:
             ticker,
             exc_info=True,
         )
-        raise QuoteFetchError(
-            "Network error while fetching market data.",
-            code=FetchErrorCode.NETWORK,
-        ) from exc
+    
+        # Försök fallback om vi har mock aktiverat eller vill använda den vid network-fel
+        logger.warning("Network error...falling back to mock for %s", ticker)
+        try:
+            return _quote_from_mock(ticker)
+        except QuoteFetchError:
+            # Om mock inte går att använda: kasta korrekt NETWORK error
+            raise QuoteFetchError(
+                "Network error while fetching market data.",
+                code=FetchErrorCode.NETWORK,
+            ) from exc
+
+
 
     
     
