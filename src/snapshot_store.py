@@ -15,6 +15,12 @@ Clock = Callable[[], datetime]
 
 @dataclass(frozen=True)
 class Snapshot:
+    """
+    Immutable representation of a single portfolio snapshot
+    
+    Captures the portfolio state immediately after a successful trade
+    Stored as one row in snapshots.csv
+    """
     timestamp: str
     event: str
     ticker: str
@@ -26,6 +32,20 @@ class Snapshot:
 
 
 class SnapshotStore:
+    """
+    Append-only CSV writer for portfolio snapshots.
+
+    Responsibilities:
+    - Create snapshot file if missing
+    - Append one row per successful trade
+    - Never overwrite history
+    - Fail safely (log error, return False)
+
+    Designed for:
+    - Portfolio history tracking
+    - Graphs / analytics later
+    - Easy pandas/matplotlib import
+    """    
     """Append-only snapshot writer for portfolio state after trades (CSV)."""
 
     def __init__(self, path: Path = SNAPSHOTS_FILE, clock: Optional[Clock] = None) -> None:
@@ -42,6 +62,22 @@ class SnapshotStore:
         cash: float,
         holdings_value: float,
     ) -> bool:
+        """
+        Append a new snapshot row to the CSV file.
+
+        Called after each successful BUY/SELL.
+
+        Args:
+            event: Trade type ("BUY" or "SELL")
+            ticker: Stock symbol
+            quantity: Shares traded
+            price: Price per share
+            cash: Current portfolio cash balance
+            holdings_value: Total value of all holdings
+
+        Returns:
+            True if write succeeded, False otherwise.
+        """        
         ts = self.clock().isoformat()
         total_value = cash + holdings_value
 
