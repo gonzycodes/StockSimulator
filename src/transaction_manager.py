@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 from src.portfolio import Portfolio
+from src.snapshot_store import SnapshotStore
+
 from src.transaction_logger import log_transaction
 from src.models.transaction import Transaction
 
@@ -43,6 +45,8 @@ class InsufficientHoldingsError(TransactionError):
 
 class TransactionManager:
     """Manages buy/sell transactions for a portfolio."""
+    def __init__(self, snapshot_store: SnapshotStore | None = None) -> None:
+        self.snapshot_store = snapshot_store
 
     def buy(
             self,
@@ -62,6 +66,19 @@ class TransactionManager:
 
         portfolio.cash -= gross_amount
         portfolio.holdings[ticker] = portfolio.holdings.get(ticker, 0.0) + quantity
+        if self.snapshot_store:
+            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="BUY",
+                ticker=ticker,
+                quantity=quantity,
+                price=price,
+                cash=portfolio.cash,
+                holdings_value=holdings_value,
+            )
+
+
+
         
         tx = Transaction(
             kind='buy',
@@ -100,6 +117,19 @@ class TransactionManager:
             portfolio.holdings.pop(ticker, None)
         else:
             portfolio.holdings[ticker] = remaining
+        
+        if self.snapshot_store:
+            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="SELL",
+                ticker=ticker,
+                quantity=quantity,
+                price=price,
+                cash=portfolio.cash,
+                holdings_value=holdings_value,
+            )
+
+
         
         tx = Transaction(
             kind='sell',
@@ -169,4 +199,4 @@ if __name__ == "__main__":
     
     print("Control now:")
     print("  • data/transactions.json   ← should have two posts (buy + sell)")
-    print("  • logs/app.log            ← shoyld have two INFO-lines")
+    print("  • logs/app.log            ← should have two INFO-lines")
