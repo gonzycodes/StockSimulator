@@ -1,202 +1,226 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Literal
+
+import logging
+from typing import Callable
+
+from src.data_fetcher import QuoteFetchError, fetch_latest_quote
+from src.errors import ValidationError
+from src.logger import get_logger
 from src.portfolio import Portfolio
 from src.snapshot_store import SnapshotStore
-
-from src.transaction_logger import log_transaction
+from src.transaction_logger import log_transaction, utc_timestamp_iso_z
+from src.validators import validate_positive_number, validate_ticker
 from src.models.transaction import Transaction
+
 
 # =========================
 # Domain Exceptions
 # =========================
 class TransactionError(Exception):
     """Base class for all transaction related errors."""
-    pass
 
 
 class InvalidTickerError(TransactionError):
     """Raised when ticker is missing or invalid."""
-    pass
 
 
 class InvalidQuantityError(TransactionError):
-    """Raised when quantity <= 0 or not numeric"""
-    pass
+    """Raised when quantity <= 0 or not numeric."""
 
 
 class InvalidPriceError(TransactionError):
-    """Raised when price <= 0 or not numeric"""
-    pass
+    """Raised when price <= 0 or not numeric."""
+
+
+class PriceFetchError(TransactionError):
+    """Raised when price provider/data fetcher fails."""
 
 
 class InsufficientFundsError(TransactionError):
     """Raised when there is not enough cash to buy."""
-    pass
 
 
 class InsufficientHoldingsError(TransactionError):
     """Raised when trying to sell more than owned."""
-    pass
 
-# ===========================================================
-# Central class for managing transactions
-# ===========================================================
+
+PriceProvider = Callable[[str], float]
+
 
 class TransactionManager:
-    """Manages buy/sell transactions for a portfolio."""
-    def __init__(self, snapshot_store: SnapshotStore | None = None) -> None:
+    """
+    Central business logic for buy/sell.
+
+    - No I/O (no input/print).
+    - Price lookup is injected (mockable).
+    - Validates via src.validators.
+    """
+
+    def __init__(
+        self,
+        *,
+        portfolio: Portfolio,
+        price_provider: PriceProvider | None = None,
+        logger: logging.Logger | None = None,
+        snapshot_store: SnapshotStore | None = None,
+    ) -> None:
+        self.portfolio = portfolio
+        self.price_provider = price_provider or self._default_price_provider
+        self.log = logger or get_logger(__name__)
         self.snapshot_store = snapshot_store
 
-    def buy(
-            self,
-            portfolio: Portfolio,
-            ticker: str,
-            quantity: float,
-            price: float
-    ) -> Transaction:
-        self.validate_inputs(ticker, quantity, price)
-        
-        gross_amount = quantity * price
-        
-        if portfolio.cash < gross_amount:
+
+    # -------------------------
+    # Public API (AC)
+    # -------------------------
+    def buy(self, ticker: str, amount: float) -> Transaction:
+        clean_ticker = self._validate_ticker(ticker)
+        qty = self._validate_quantity(amount)
+
+        price = self._get_price(clean_ticker)
+        total_cost = qty * price
+
+        if self.portfolio.cash < total_cost:
             raise InsufficientFundsError(
-                f"Not enough cash to buy {quantity} shares of {ticker}."
+                f"Not enough cash to buy {qty} shares of {clean_ticker}. "
+                f"Need {total_cost:.2f}, have {self.portfolio.cash:.2f}."
             )
 
-        portfolio.cash -= gross_amount
-        portfolio.holdings[ticker] = portfolio.holdings.get(ticker, 0.0) + quantity
+        # mutate after all checks => atomic on expected failures
+        self.portfolio.cash -= total_cost
+        self.portfolio.holdings[clean_ticker] = self.portfolio.holdings.get(clean_ticker, 0.0) + qty
+
         if self.snapshot_store:
-            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            holdings_value = self.portfolio.holdings.get(clean_ticker, 0.0) * price
             self.snapshot_store.append_snapshot(
                 event="BUY",
-                ticker=ticker,
-                quantity=quantity,
+                ticker=clean_ticker,
+                quantity=qty,
                 price=price,
-                cash=portfolio.cash,
+                cash=self.portfolio.cash,
                 holdings_value=holdings_value,
             )
 
-
-
-        
         tx = Transaction(
-            kind='buy',
-            ticker=ticker,
-            quantity=quantity,
+            kind="buy",
+            ticker=clean_ticker,
+            quantity=qty,
             price=price,
-            gross_amount=gross_amount,
-            cash_after=portfolio.cash
+            gross_amount=total_cost,
+            cash_after=self.portfolio.cash,
+            timestamp=utc_timestamp_iso_z(),
+        )
+
+        log_transaction(tx)
+        self.log.info(
+            "TRADE BUY ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
+            tx.ticker,
+            tx.quantity,
+            tx.price,
+            tx.gross_amount,
+            tx.timestamp,
+            tx.cash_after,
         )
         
-        log_transaction(tx)
         return tx
-    
 
-    def sell(
-            self,
-            portfolio: Portfolio,
-            ticker: str,
-            quantity: float,
-            price: float
-    ) -> Transaction:
-        self.validate_inputs(ticker, quantity, price)
-        
-        owned = portfolio.holdings.get(ticker, 0.0)
-        
-        if owned < quantity:
+
+    def sell(self, ticker: str, amount: float) -> Transaction:
+        clean_ticker = self._validate_ticker(ticker)
+        qty = self._validate_quantity(amount)
+
+        owned = self.portfolio.holdings.get(clean_ticker, 0.0)
+        if owned < qty:
             raise InsufficientHoldingsError(
-                f"Not enough shares to sell {quantity} of {ticker}."
+                f"Not enough shares to sell {qty} of {clean_ticker}. "
+                f"Owned {owned}."
             )
-        
-        gross_amount = quantity * price
-        portfolio.cash += gross_amount
-        
-        remaining = owned - quantity
+
+        price = self._get_price(clean_ticker)
+        total_proceeds = qty * price
+
+        # mutate after all checks => atomic on expected failures
+        self.portfolio.cash += total_proceeds
+
+        remaining = owned - qty
         if remaining <= 0:
-            portfolio.holdings.pop(ticker, None)
+            self.portfolio.holdings.pop(clean_ticker, None)
         else:
-            portfolio.holdings[ticker] = remaining
-        
+            self.portfolio.holdings[clean_ticker] = remaining
+
         if self.snapshot_store:
-            holdings_value = portfolio.holdings.get(ticker, 0.0) * price
+            holdings_value = self.portfolio.holdings.get(clean_ticker, 0.0) * price
             self.snapshot_store.append_snapshot(
                 event="SELL",
-                ticker=ticker,
-                quantity=quantity,
+                ticker=clean_ticker,
+                quantity=qty,
                 price=price,
-                cash=portfolio.cash,
+                cash=self.portfolio.cash,
                 holdings_value=holdings_value,
             )
 
-
-        
         tx = Transaction(
-            kind='sell',
-            ticker=ticker,
-            quantity=quantity,
+            kind="sell",
+            ticker=clean_ticker,
+            quantity=qty,
             price=price,
-            gross_amount=gross_amount,
-            cash_after=portfolio.cash
+            gross_amount=total_proceeds,
+            cash_after=self.portfolio.cash,
+            timestamp=utc_timestamp_iso_z(),
+        )
+
+        log_transaction(tx)
+        self.log.info(
+            "TRADE SELL ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
+            tx.ticker,
+            tx.quantity,
+            tx.price,
+            tx.gross_amount,
+            tx.timestamp,
+            tx.cash_after,
         )
         
-        log_transaction(tx)
         return tx
-    
-    
-    # =========================
-    # Input Validation
-    # =========================
-    def validate_inputs(
-            self,
-            ticker: str,
-            quantity: float,
-            price: float
-    ) -> None:
-        """Validates basic transaction inputs."""
 
-        # Validate ticker
-        if not isinstance(ticker, str) or not ticker.strip():
-            raise InvalidTickerError("Ticker must be a non-empty string.")
 
-        # Validate quantity
-        if not isinstance(quantity, (int, float)) or quantity <= 0:
-            raise InvalidQuantityError("Quantity must be a positive number.")
-
-        # Validate price
-        if not isinstance(price, (int, float)) or price <= 0:
-            raise InvalidPriceError("Price must be a positive number.")
+    # -------------------------
+    # Internals
+    # -------------------------
+    def _default_price_provider(self, ticker: str) -> float:
+        quote = fetch_latest_quote(ticker)
         
-if __name__ == "__main__":
-    from src.logger import init_logging_from_env
-    from src.portfolio import Portfolio
-    
-    # Starta loggning
-    init_logging_from_env()
-    
-    print("Starting test with buy and sell...\n")
-    
-    p = Portfolio(cash=10000.0)
-    tm = TransactionManager()
-    
-    # Test 1: Buy 20 stocks from ERIC-B.ST for 95 kr/each
-    try:
-        tx_buy = tm.buy(p, ticker="ERIC-B.ST", quantity=20, price=95.0)
-        print("buy completed!")
-        print(f"  Cash after transaction: {p.cash:.2f} kr")
-        print(f"  Holding after buy: {p.holdings}\n")
-    except Exception as e:
-        print("transaction failed:", e)
-    
-    # Test 2: Sell 8 stocks from ERIC-B.ST for 98 kr/each
-    try:
-        tx_sell = tm.sell(p, ticker="ERIC-B.ST", quantity=8, price=98.0)
-        print("Sell completed!")
-        print(f"  Cash after transaction: {p.cash:.2f} kr")
-        print(f"  Holding after sell: {p.holdings}\n")
-    except Exception as e:
-        print("transaction failed:", e)
-    
-    print("Control now:")
-    print("  • data/transactions.json   ← should have two posts (buy + sell)")
-    print("  • logs/app.log            ← should have two INFO-lines")
+        return float(quote.price)
+
+
+    def _get_price(self, ticker: str) -> float:
+        try:
+            price = self.price_provider(ticker)
+        except QuoteFetchError as exc:
+            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+        except Exception as exc:
+            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+
+        if not isinstance(price, (int, float)):
+            raise PriceFetchError(f"Price provider returned non-numeric price for '{ticker}'.")
+
+        price_f = float(price)
+        if price_f <= 0:
+            raise PriceFetchError(f"Price provider returned invalid price {price_f} for '{ticker}'.")
+
+        return price_f
+
+
+    def _validate_ticker(self, ticker: object) -> str:
+        if not isinstance(ticker, str):
+            raise InvalidTickerError("Ticker must be a non-empty string.")
+        try:
+            return validate_ticker(ticker)
+        except ValidationError as exc:
+            raise InvalidTickerError(str(exc)) from exc
+
+
+    def _validate_quantity(self, qty: object) -> float:
+        try:
+            return validate_positive_number(qty, name="quantity")
+        except ValidationError as exc:
+            raise InvalidQuantityError(str(exc)) from exc

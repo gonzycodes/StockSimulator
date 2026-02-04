@@ -15,6 +15,7 @@ def normalize_ticker(raw_ticker: str) -> str:
     
     return raw_ticker.strip().upper()
 
+
 def validate_ticker(ticker: str) -> str:
     """
     Validates that a ticker is not empty after normalization.
@@ -26,6 +27,7 @@ def validate_ticker(ticker: str) -> str:
         raise ValidationError("Ticker symbol cannot be empty.")
     
     return clean_ticker
+
 
 def validate_positive_float(raw_value: str) -> float:
     """
@@ -43,3 +45,18 @@ def validate_positive_float(raw_value: str) -> float:
     
     return value
 
+
+def validate_positive_number(value: float | int, *, name: str = "value") -> float:
+    """
+    Validates that a numeric value is a number > 0.
+    Raises ValidationError on invalid input.
+    """
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        raise ValidationError(f"{name} must be a number.")
+
+    if num <= 0:
+        raise ValidationError(f"{name} must be greater than zero.")
+
+    return num
