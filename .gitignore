@@ -223,3 +223,4 @@ logs/
 # /data/
 data/portfolio.json
 *.json
+data/snapshots.csv
