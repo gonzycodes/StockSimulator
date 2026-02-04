@@ -2,7 +2,7 @@
 Configuration module for StockSimulator
 Centralizes the path definitions using pathlib to ensure cross platform compatibility.
 """
-
+from datetime import datetime, time
 from pathlib import Path
 
 #   Base directory of the project
@@ -19,9 +19,11 @@ TESTS_DIR = PROJECT_ROOT / "tests"
 # Ensure directories exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+
 # for debugging purposes only
 if __name__ == "__main__":
     print(f"Project Root: {PROJECT_ROOT}")
     print(f"Data Directory: {DATA_DIR}")
     print(f"Source Directory: {SRC_DIR}")
     print(f"Tests Directory: {TESTS_DIR}")
+

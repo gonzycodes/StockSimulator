@@ -10,11 +10,32 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
 from typing import Optional
-
 import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
+
+def get_market_state(ticker: str) -> str:
+    """
+    Fetch the current market state from yfinance.
+    Returns 'REGULAR', 'CLOSED', 'PRE', 'POST', 'PREPRE', etc.
+    Returns 'UNKNOWN' if fetch fails.
+    """
+    try:
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info
+        state = info.get('marketState', 'UNKNOWN')
+        return state
+    except Exception:
+        logger.warning("Could not fetch marketState for %s", ticker, exc_info=True)
+        return 'UNKNOWN'
+
+def is_market_likely_open(ticker: str) -> bool:
+    """
+    Returns True if marketState indicates regular trading hours.
+    """
+    state =get_market_state(ticker)
+    return state == 'REGULAR' 
 class FetchErrorCode(str, Enum):
     VALIDATION = "VALIDATION"
     NOT_FOUND = "NOT_FOUND"
@@ -58,6 +79,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
     Fetch the latest price for a ticker using yfinance.
     """
     ticker = _validate_ticker(ticker)
+
+    if not is_market_likely_open(ticker):
+        print("Warning: Market appears to be closed for this ticker - showing last known price")
+        logger.info("Market likely closed for ticker: %s (marketState: %s)",
+                    ticker, get_market_state(ticker))
+
     try:
         yf_ticker = yf.Ticker(ticker)
         

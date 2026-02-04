@@ -5,6 +5,9 @@ from src.portfolio import Portfolio
 from src.transaction_logger import log_transaction
 from src.models.transaction import Transaction
 
+
+from src.data_fetcher import is_market_likely_open, get_market_state
+
 # =========================
 # Domain Exceptions
 # =========================
@@ -37,6 +40,12 @@ class InsufficientHoldingsError(TransactionError):
     """Raised when trying to sell more than owned."""
     pass
 
+
+class MarketClosedError(TransactionError):
+    """Raised when attempting to trade outside regular market hours."""
+    pass
+
+
 # ===========================================================
 # Central class for managing transactions
 # ===========================================================
@@ -53,6 +62,14 @@ class TransactionManager:
     ) -> Transaction:
         self.validate_inputs(ticker, quantity, price)
         
+        # Block buys if market isn't in regular trading
+        if not is_market_likely_open(ticker):
+            state = get_market_state(ticker)
+            raise MarketClosedError(
+                f"Cannot buy {ticker} - market is not in regular trading hours "
+                f"(current state: {state})"
+            )
+
         gross_amount = quantity * price
         
         if portfolio.cash < gross_amount:
@@ -84,6 +101,14 @@ class TransactionManager:
             price: float
     ) -> Transaction:
         self.validate_inputs(ticker, quantity, price)
+        
+        # Block sell if market isn't in regular trading
+        if not is_market_likely_open(ticker):
+            state = get_market_state(ticker)
+            raise MarketClosedError(
+                f"Cannot sell {ticker} – market is not in regular trading hours "
+                f"(current state: {state})"
+            )
         
         owned = portfolio.holdings.get(ticker, 0.0)
         
@@ -141,7 +166,7 @@ if __name__ == "__main__":
     from src.logger import init_logging_from_env
     from src.portfolio import Portfolio
     
-    # Starta loggning
+    # Start logging
     init_logging_from_env()
     
     print("Starting test with buy and sell...\n")
