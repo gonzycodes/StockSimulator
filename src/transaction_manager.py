@@ -78,8 +78,7 @@ class TransactionManager:
             )
 
 
-        # Return transaction summary
-        return Transaction(
+
         
         tx = Transaction(
             kind='buy',
@@ -131,8 +130,7 @@ class TransactionManager:
             )
 
 
-        # Return transaction summary
-        return Transaction(
+        
         tx = Transaction(
             kind='sell',
             ticker=ticker,
@@ -201,4 +199,4 @@ if __name__ == "__main__":
     
     print("Control now:")
     print("  • data/transactions.json   ← should have two posts (buy + sell)")
-    print("  • logs/app.log            ← shoyld have two INFO-lines")
+    print("  • logs/app.log            ← should have two INFO-lines")
