@@ -135,12 +135,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
             exc_info=True,
         )
     
-        # Försök fallback om vi har mock aktiverat eller vill använda den vid network-fel
+        # Try fallback if we have mock enabled or want to use it in case of network errors
         logger.warning("Network error...falling back to mock for %s", ticker)
         try:
             return _quote_from_mock(ticker)
         except QuoteFetchError:
-            # Om mock inte går att använda: kasta korrekt NETWORK error
+            # If mock cannot be used: throw correct network error
             raise QuoteFetchError(
                 "Network error while fetching market data.",
                 code=FetchErrorCode.NETWORK,
