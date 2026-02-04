@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-
 import yfinance as yf
 
 from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
@@ -21,41 +20,28 @@ from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
 
 logger = logging.getLogger(__name__)
 
-def load_mock_prices(path: Path = MOCK_PRICES_FILE) -> dict[str, dict]:
-    """Load mock prices from JSON file. Returns empty dict if missing."""
+
+def get_market_state(ticker: str) -> str:
+    """
+    Fetch the current market state from yfinance.
+    Returns 'REGULAR', 'CLOSED', 'PRE', 'POST', 'PREPRE', etc.
+    Returns 'UNKNOWN' if fetch fails.
+    """
     try:
-        if not path.exists():
-            logger.warning("Mock price file not found: %s", path)
-            return {}
-        
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    
-    except (OSError, json.JSONDecodeError):
-        logger.error("Failed to read mock price file: %s", path, exc_info=True)
-        return {}
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info
+        state = info.get('marketState', 'UNKNOWN')
+        return state
+    except Exception:
+        logger.warning("Could not fetch marketState for %s", ticker, exc_info=True)
+        return 'UNKNOWN'
 
-def _quote_from_mock(ticker: str) -> Quote:
-    """Create a Quote using mock price data."""
-    mock_data = load_mock_prices()
-
-    if ticker not in mock_data:
-        raise QuoteFetchError(f"No mock price for ticker: {ticker}")
-
-    entry = mock_data[ticker]
-    price = float(entry["price"])
-
-    print("Using mock data")
-    logger.info("Using mock data for %s", ticker)
-
-    return Quote(
-        ticker=ticker,
-        price=price,
-        currency="MOCK",
-        timestamp=datetime.now(timezone.utc),
-        company_name=None,
-    )
-
+def is_market_likely_open(ticker: str) -> bool:
+    """
+    Returns True if marketState indicates regular trading hours.
+    """
+    state =get_market_state(ticker)
+    return state == 'REGULAR' 
 class FetchErrorCode(str, Enum):
     VALIDATION = "VALIDATION"
     NOT_FOUND = "NOT_FOUND"
@@ -99,8 +85,12 @@ def fetch_latest_quote(ticker: str) -> Quote:
     Fetch the latest price for a ticker using yfinance.
     """
     ticker = _validate_ticker(ticker)
-    if USE_MOCK_DATA:
-        return _quote_from_mock(ticker)
+
+    if not is_market_likely_open(ticker):
+        print("Warning: Market appears to be closed for this ticker - showing last known price")
+        logger.info("Market likely closed for ticker: %s (marketState: %s)",
+                    ticker, get_market_state(ticker))
+
     try:
         yf_ticker = yf.Ticker(ticker)
         

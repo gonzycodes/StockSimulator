@@ -1,9 +1,3 @@
-# src/cli.py
-
-"""
-Command-line interface (CLI) layer for StockSimulator.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -14,7 +8,17 @@ from typing import Dict
 
 from json import JSONDecodeError
 
+from src.transaction_manager import (
+    TransactionManager,
+    MarketClosedError,
+    InsufficientFundsError,
+    InsufficientHoldingsError
+)
+
+# Data fetch och errors
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
+
+# Portfolio, config, errors, validators, formatters
 from src.portfolio import Portfolio
 from src.config import DATA_DIR
 from src.errors import FileError, ValidationError
@@ -23,12 +27,8 @@ from src.formatters import format_portfolio_output
 from src.snapshot_store import SnapshotStore
 from src.transaction_manager import TransactionManager, TransactionError
 
-
-PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
-
 try:
-    # Preferred (dev) logging layer
-    from src.logger import init_logging, get_logger  # type: ignore
+    from src.logger import init_logging, get_logger
 
     log = get_logger(__name__)
     tm = TransactionManager(snapshot_store=SnapshotStore())
@@ -36,8 +36,16 @@ try:
 except Exception:  # pragma: no cover
     # Fallback if src.logger is not available yet
     import logging
+    from pathlib import Path
 
-    def init_logging(level: str = "INFO") -> None:
+    def init_logging(
+        *,
+        level: str = "INFO",
+        log_file: str | Path = "logs/app.log",
+        console: bool = True,
+        max_bytes: int = 2000000,
+        backup_count: int = 5,
+    ) -> None:
         """Initialize basic logging."""
         logging.basicConfig(level=level)
 
@@ -47,6 +55,7 @@ except Exception:  # pragma: no cover
 
     log = get_logger(__name__)
 
+PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
 def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
@@ -173,8 +182,7 @@ def cmd_quote(ticker_raw: str) -> int:
 
 def cmd_buy(ticker_raw: str, quantity: float) -> int:
     """
-    Execute the buy command.
-    Uses TransactionManager so transaction history + snapshots are written consistently.
+    Execute the buy command via TransactionManager (includes market check).
     """
     try:
         ticker = validate_ticker(ticker_raw)
@@ -185,19 +193,29 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
         price = float(quote.price)
 
         portfolio = load_portfolio()
-        tx = tm.buy(portfolio, ticker, valid_quantity, price)
+        
+        # Use TransactionManager instead of direct portfolio.buy()
+        tm = TransactionManager()
+        tx = tm.buy(portfolio, ticker, valid_quantity, price)  
+        
         save_portfolio(portfolio)
-
-        print(f"SUCCESS: Bought {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
-        print(f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
-        log.info("BOUGHT %s qty=%s price=%s total=%s", ticker, valid_quantity, price, tx.gross_amount)
+        
+        total_cost = tx.gross_amount
+        print(f"SUCCESS: Bought {valid_quantity} shares of {ticker} at {price:.2f}.")
+        print(f"Cost: {total_cost:.2f}. New Cash Balance: {tx.cash_after:.2f}")
+        
+        log.info(f"BOUGHT {ticker}: qty={valid_quantity} price={price} total={total_cost}")
         return 0
-
+    
+    except MarketClosedError as e:
+        print(f"Trade blocked: {e}")
+        log.warning("Buy blocked due to market state: %s", e)
+        return 1
+    except InsufficientFundsError as e:
+        print(f"Insufficient funds: {e}")
+        return 1
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
-        return 1
-    except TransactionError as exc:
-        print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
@@ -213,8 +231,7 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
 
 def cmd_sell(ticker_raw: str, quantity: float) -> int:
     """
-    Execute the sell command.
-    Uses TransactionManager so transaction history + snapshots are written consistently.
+    Execute the sell command via TransactionManager (includes market check).
     """
     try:
         ticker = validate_ticker(ticker_raw)
@@ -225,19 +242,29 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         price = float(quote.price)
 
         portfolio = load_portfolio()
-        tx = tm.sell(portfolio, ticker, valid_quantity, price)
+        
+        # Use TransactionManager instead of direct portfolio.sell()
+        tm = TransactionManager()
+        tx = tm.sell(portfolio, ticker, valid_quantity, price)  
+        
         save_portfolio(portfolio)
 
-        print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
-        print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
-        log.info("SOLD %s qty=%s price=%s total=%s", ticker, valid_quantity, price, tx.gross_amount)
+        total_sale = tx.gross_amount
+        print(f"SUCCESS: Sold {valid_quantity} shares of {ticker} at {price:.2f}.")
+        print(f"Proceeds: {total_sale:.2f}. New Cash Balance: {tx.cash_after:.2f}")
+        
+        log.info(f"SOLD {ticker}: qty={valid_quantity} price={price} total={total_sale}")
         return 0
 
+    except MarketClosedError as e:
+        print(f"Trade blocked: {e}")
+        log.warning("Sell blocked due to market state: %s", e)
+        return 1
+    except InsufficientHoldingsError as e:
+        print(f"Insufficient holdings: {e}")
+        return 1
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
-        return 1
-    except TransactionError as exc:
-        print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
