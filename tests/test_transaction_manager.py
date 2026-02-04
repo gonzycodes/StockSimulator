@@ -46,7 +46,7 @@ def test_buy_insufficient_funds_raises_and_portfolio_unchanged(portfolio, tm):
     holdings_before = dict(portfolio.holdings)
 
     with pytest.raises(InsufficientFundsError):
-        tm.buy(portfolio, "TSLA", 10, 150.0)  # kostar 1500 > 1000
+        tm.buy(portfolio, "TSLA", 10, 150.0)  # Costs 1500 > 1000
 
     assert portfolio.cash == cash_before
     assert portfolio.holdings == holdings_before
@@ -112,7 +112,7 @@ def test_sell_insufficient_holdings_raises_and_portfolio_unchanged(portfolio, tm
 
 
 def test_sell_non_existent_ticker_raises(portfolio, tm):
-    with pytest.raises(InsufficientHoldingsError):  # eller annan exception beroende på implementation
+    with pytest.raises(InsufficientHoldingsError):  # or other exception
         tm.sell(portfolio, "NOKIA", 1, 50.0)
         
         

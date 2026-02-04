@@ -46,7 +46,8 @@ except Exception:  # pragma: no cover
 def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
     if not path.exists():
-        log.info("Portfolio file not found, creating new portfolio.")
+        log.info("Portfolio file not found at %s, creating new portfolio.", path)
+        print(f"No file found at {path}. Starting fresh.")
         return Portfolio()
 
     try:
@@ -56,12 +57,15 @@ def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
         p = Portfolio()
         p.cash = float(data.get("cash", 10000.0))
         p.holdings = dict(data.get("holdings", {}))
+        
+        log.info("Loaded portfolio from %s", path)
         return p
 
     except (OSError, JSONDecodeError, ValueError, TypeError) as exc:
         # Log full detail for debugging, show friendly error via FileError
         log.warning("Failed to load portfolio file: %s", path, exc_info=True)
-        raise FileError(f"Could not read portfolio file: {path}") from exc
+        print(f"Warning: Could not load portfolio ({exc}). Starting with default.")
+        return Portfolio() # Return empty instead of crashing
     
     
 def save_portfolio(portfolio: Portfolio, path: Path = PORTFOLIO_FILE) -> None:
@@ -70,6 +74,7 @@ def save_portfolio(portfolio: Portfolio, path: Path = PORTFOLIO_FILE) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(portfolio.to_dict(), f, indent=4)
+        log.info("Saved portfolio to %s", path)
     except OSError as exc:
         log.error("Failed to save portfolio file: %s", path, exc_info=True)
         raise FileError(f"Could not save portfolio file: {path}") from exc
@@ -91,13 +96,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
     s.add_argument("quantity", type=float, help="Number of shares to sell")
     
-    # Combined: Buy command (Yours)
     b = sub.add_parser("buy", help="Buy an asset and add to the portfolio.")
     b.add_argument("ticker", help="Ticker symbol to buy, e.g. AAPL")
     b.add_argument("quantity", type=float, help="Number of shares to buy")
     
-    # Combined: Portfolio command (Incoming from dev)
     p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
+
+    sub.add_parser("save", help="Manually save the current portfolio to disk.")
+    sub.add_parser("load", help="Manually reload the portfolio from disk.")
 
     return parser
 
@@ -151,13 +157,13 @@ def cmd_quote(ticker_raw: str) -> int:
     except QuoteFetchError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 0
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
     except Exception as exc:
         log.exception("Unexpected CLI error")
         print(f"Error: Unexpected error: {exc}", file=sys.stderr)
         return 0
-    except FileError as exc:
-        print(f"File Error: {exc}", file=sys.stderr)
-        return 1
 
 def cmd_buy(ticker_raw: str, quantity: float) -> int:
     """
@@ -226,15 +232,15 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
     except ValueError as exc:
         print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
     except QuoteFetchError as exc:
         print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
         return 1
     except Exception as exc:
         log.exception("Unexpected error during sell command")
         print(f"System Error: {exc}", file=sys.stderr)
-        return 1
-    except FileError as exc:
-        print(f"File Error: {exc}", file=sys.stderr)
         return 1
 
 def cmd_portfolio() -> int:
@@ -259,6 +265,37 @@ def cmd_portfolio() -> int:
         return 1        
 
 
+def cmd_save() -> int:
+    """Execute the save command (TR-235)."""
+    try:
+        portfolio = load_portfolio()
+        # In a real CLI loop, the portfolio object would be in memory. 
+        # Here we just prove we can save the current state to the default path.
+        save_portfolio(portfolio)
+        print(f"Saved portfolio to {PORTFOLIO_FILE}")
+        return 0
+    except FileError as e:
+        print(f"Error saving: {e}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log.exception("Unexpected error during save")
+        print(f"System Error: {exc}", file=sys.stderr)
+        return 1
+
+def cmd_load() -> int:
+    """Execute the load command (TR-235)."""
+    try:
+        # force reload from disk
+        portfolio = load_portfolio() 
+        print(f"Loaded portfolio from {PORTFOLIO_FILE}")
+        print(f"Cash: {portfolio.cash:.2f} SEK")
+        print(f"Holdings: {len(portfolio.holdings)} assets")
+        return 0
+    except Exception as exc:
+        log.exception("Unexpected error during load")
+        print(f"System Error: {exc}", file=sys.stderr)
+        return 1
+
 def main(argv: list[str] | None = None) -> int:
     """
     CLI entrypoint.
@@ -275,12 +312,17 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "sell":
             return cmd_sell(args.ticker, args.quantity)
         
-        # Handled both cases here
         elif args.command == "buy":
             return cmd_buy(args.ticker, args.quantity)
 
         elif args.command == "portfolio":
             return cmd_portfolio()
+            
+        elif args.command == "save":
+            return cmd_save()
+            
+        elif args.command == "load":
+            return cmd_load()
         
         print("Error: Unknown command.", file=sys.stderr)
         return 0
