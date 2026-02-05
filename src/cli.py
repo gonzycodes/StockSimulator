@@ -27,6 +27,9 @@ from src.validators import validate_ticker, validate_positive_float
 from src.formatters import format_portfolio_output
 from src.snapshot_store import SnapshotStore
 
+# Analytics
+from src.analytics import compute_pl
+
 try:
     from src.logger import init_logging, get_logger
 
@@ -113,6 +116,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("quantity", type=float, help="Number of shares to buy")
     
     p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
+
+    sub.add_parser("analytics", help="Show Profit/Loss (realized + unrealized) from transactions.")
 
     sub.add_parser("save", help="Manually save the current portfolio to disk.")
     sub.add_parser("load", help="Manually reload the portfolio from disk.")
@@ -277,7 +282,22 @@ def cmd_portfolio() -> int:
     except Exception as exc:
         log.exception("Unexpected error during portfolio command")
         print(f"System error: {exc}", file=sys.stderr)
-        return 1        
+        return 1
+
+
+def cmd_analytics() -> int:
+    """
+    Execute the analytics command (TR-241).
+    Prints a simple dict for now (presentation via CLI).
+    """
+    try:
+        result = compute_pl()
+        print(result)
+        return 0
+    except Exception as exc:
+        log.exception("Unexpected error during analytics command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1
 
 
 def cmd_save() -> int:
@@ -332,6 +352,9 @@ def main(argv: list[str] | None = None) -> int:
 
         elif args.command == "portfolio":
             return cmd_portfolio()
+        
+        elif args.command == "analytics":
+            return cmd_analytics()
             
         elif args.command == "save":
             return cmd_save()
