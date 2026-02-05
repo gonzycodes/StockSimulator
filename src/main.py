@@ -22,6 +22,7 @@ from src.portfolio import Portfolio
 from src.cli import load_portfolio, save_portfolio, validate_ticker
 from src.snapshot_store import SnapshotStore
 from src.transactions import TransactionManager, TransactionError
+from src.reporting import generate_and_write_report
 
 
 log = get_logger(__name__)
@@ -31,6 +32,7 @@ SIM_COMMANDS: list[tuple[str, str]] = [
     ("buy <TICKER> <QTY>", "Buy shares into your portfolio"),
     ("sell <TICKER> <QTY>", "Sell shares from your portfolio"),
     ("portfolio", "Show cash and holdings"),
+    ("report [N]", "Write a daily trade report to data/ (default N=5)"),
     ("help | ?", "Show available commands"),
     ("exit | quit", "Return to the main menu"),
 ]
@@ -194,6 +196,28 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
 
         print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
         print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {state.portfolio.cash:.2f}")
+        return True
+    
+    if cmd == "report":
+        if len(tokens) not in {1, 2}:
+            raise ValidationError("Usage: report [N]")
+
+        recent_n = 5
+        if len(tokens) == 2:
+            try:
+                recent_n = int(tokens[1])
+            except ValueError as exc:
+                raise ValidationError("Usage: report [N] (N must be an integer)") from exc
+
+            if recent_n < 0:
+                raise ValidationError("N must be >= 0.")
+
+        out_path = generate_and_write_report(
+            portfolio=state.portfolio,
+            price_provider=_deps_price_provider(deps),
+            recent_n=recent_n,
+        )
+        print(f"Report written to {out_path}")
         return True
 
     print(f"Unknown command: '{cmd}'. Type 'help' for a list of commands.")

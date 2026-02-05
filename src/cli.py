@@ -30,6 +30,9 @@ from src.snapshot_store import SnapshotStore
 # Analytics
 from src.analytics import compute_pl
 
+# Reporting
+from src.reporting import generate_and_write_report
+
 try:
     from src.logger import init_logging, get_logger
 
@@ -118,6 +121,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
 
     sub.add_parser("analytics", help="Show Profit/Loss (realized + unrealized) from transactions.")
+    
+    r = sub.add_parser("report", help="Generate a daily trade report to data.")
+    r.add_argument("--recent", type=int, default=5, help="Include last N trades (default: 5)")
 
     sub.add_parser("save", help="Manually save the current portfolio to disk.")
     sub.add_parser("load", help="Manually reload the portfolio from disk.")
@@ -298,6 +304,38 @@ def cmd_analytics() -> int:
         log.exception("Unexpected error during analytics command")
         print(f"System error: {exc}", file=sys.stderr)
         return 1
+    
+    
+def cmd_report(recent: int = 5) -> int:
+    """
+    Execute the report command (TR-244).
+
+    Writes a text report to data/report_YYYY-MM-DD.txt.
+    """
+    try:
+        portfolio = load_portfolio()
+
+        def price_provider(ticker: str) -> float:
+            quote = fetch_latest_quote(ticker)
+            return float(quote.price)
+
+        out_path = generate_and_write_report(
+            portfolio=portfolio,
+            price_provider=price_provider,
+            recent_n=recent,
+        )
+
+        print(f"Report written to {out_path}")
+        return 0
+
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
+    except Exception as exc:
+        log.exception("Unexpected error during report command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1
 
 
 def cmd_save() -> int:
@@ -355,6 +393,9 @@ def main(argv: list[str] | None = None) -> int:
         
         elif args.command == "analytics":
             return cmd_analytics()
+        
+        elif args.command == "report":
+            return cmd_report(args.recent)
             
         elif args.command == "save":
             return cmd_save()
