@@ -212,6 +212,19 @@ Show current portfolio status including cash, holdings, and total value.
 python -m src.cli portfolio
 ```
 
+<!-- ANALYTICS -->
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Analytics (Profit & Loss)
+
+The analytics module calculates Profit/Loss (P/L) using a simple **average cost model**.
+
+- **Realized P/L**: profit or loss from sold positions  
+- **Unrealized P/L**: (latest price − average cost) × remaining quantity  
+- **Total P/L**: realized + unrealized  
+
+
 <!-- TESTS -->
 
 ## Tests
