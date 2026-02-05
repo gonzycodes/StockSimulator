@@ -17,7 +17,7 @@ Clock = Callable[[], datetime]
 class Snapshot:
     """
     Immutable representation of a single portfolio snapshot
-    
+
     Captures the portfolio state immediately after a successful trade
     Stored as one row in snapshots.csv
     """
@@ -45,11 +45,10 @@ class SnapshotStore:
     - Portfolio history tracking
     - Graphs / analytics later
     - Easy pandas/matplotlib import
-    """    
-    """Append-only snapshot writer for portfolio state after trades (CSV)."""
+    """
 
-    def __init__(self, path: Path = SNAPSHOTS_FILE, clock: Optional[Clock] = None) -> None:
-        self.path = path
+    def __init__(self, path: Optional[Path] = None, clock: Optional[Clock] = None) -> None:
+        self.path = path or SNAPSHOTS_FILE
         self.clock: Clock = clock or (lambda: datetime.now(timezone.utc))
 
     def append_snapshot(
@@ -77,7 +76,7 @@ class SnapshotStore:
 
         Returns:
             True if write succeeded, False otherwise.
-        """        
+        """
         ts = self.clock().isoformat()
         total_value = cash + holdings_value
 
