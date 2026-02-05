@@ -18,23 +18,30 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, Any
+from typing import Any, Callable, Mapping
 
 from src.config import DATA_DIR
 from src.errors import FileError
 from src.portfolio import Portfolio
 
 try:
-    from src.logger import get_logger   # type: ignore
-except Exception:   # pragma: no cover
-    get_logger = None   # type: ignore
-    
+    from src.logger import get_logger  # type: ignore
+except Exception:  # pragma: no cover
+    get_logger = None  # type: ignore
+
 try:
-    from src.data_fetcher import fetch_latest_quote # default provider
-except Exception:   # pragma: no cover
-    fetch_latest_quote = None   # type: ignore
-    
-    
+    from src.data_fetcher import fetch_latest_quote  # default provider
+except Exception:  # pragma: no cover
+    fetch_latest_quote = None  # type: ignore
+
+# Prefer using TR-241 analytics if present (single source of truth for P/L).
+try:
+    from src.analytics import compute_pl, load_transactions_df  # type: ignore
+except Exception:  # pragma: no cover
+    compute_pl = None  # type: ignore
+    load_transactions_df = None  # type: ignore
+
+
 log = (get_logger(__name__) if callable(get_logger) else logging.getLogger(__name__))
 
 TRANSACTIONS_FILE = DATA_DIR / "transactions.json"
@@ -52,8 +59,8 @@ class TradeLine:
     price: float
     total: float
     cash_after: float
-    
-    
+
+
 @dataclass(frozen=True)
 class ReportData:
     """All values needed to render a report."""
@@ -61,22 +68,22 @@ class ReportData:
     period_label: str
     period_start: str | None
     period_end: str | None
-    
-    trade_count: int
+
+    trades_count: int
     realized_pl: float
     unrealized_pl: float
     total_pl: float
-    
+
     cash: float
     holdings: dict[str, float]
     prices: dict[str, float]
     holdings_value: float
     total_value: float
-    
+
     recent_trades: list[TradeLine]
     notes: list[str]
-    
-    
+
+
 def _default_clock() -> datetime:
     """Return current UTC time."""
     return datetime.now(timezone.utc)
@@ -104,8 +111,8 @@ def _parse_iso_ts(value: str) -> datetime | None:
         return dt.astimezone(timezone.utc)
     except Exception:
         return None
-    
-    
+
+
 def _read_transaction_records(path: Path) -> list[dict[str, Any]]:
     """Load transaction history records from JSON (safe)."""
     if not path.exists():
@@ -113,7 +120,7 @@ def _read_transaction_records(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         log.error("Transaction history path is not a file: %s", path)
         return []
-    
+
     try:
         raw = path.read_text(encoding="utf-8")
         data = json.loads(raw)
@@ -127,8 +134,8 @@ def _read_transaction_records(path: Path) -> list[dict[str, Any]]:
     except OSError:
         log.error("Failed reading transaction history: %s", path, exc_info=True)
         return []
-    
-    
+
+
 def _to_trade_line(record: Mapping[str, Any]) -> TradeLine | None:
     """Convert a raw record to a TradeLine (or None if invalid)."""
     try:
@@ -139,10 +146,10 @@ def _to_trade_line(record: Mapping[str, Any]) -> TradeLine | None:
         price = float(record.get("price", 0.0))
         total = float(record.get("total", qty * price))
         cash_after = float(record.get("cash_after", 0.0))
-        
+
         if not ticker or side not in {"BUY", "SELL"} or qty <= 0:
             return None
-        
+
         return TradeLine(
             timestamp=ts,
             side=side,
@@ -154,60 +161,17 @@ def _to_trade_line(record: Mapping[str, Any]) -> TradeLine | None:
         )
     except Exception:
         return None
-    
-    
-def _compute_cost_basis_and_realized_pnl(trades: Iterable[TradeLine]) -> tuple[dict[str, float], dict[str, float], float]:
-    """
-    Compute avg cost per ticker and realized P/L (average cost model).
 
-    Returns:
-        avg_cost: ticker -> average cost per share
-        shares: ticker -> current shares (from history)
-        realized_pl: cumulative realized P/L
-    """
-    shares: dict[str, float] = {}
-    cost_basis_total: dict[str, float] = {} # total cost basis (SEK-like units)
-    realized_pl = 0.0
-    
-    for t in trades:
-        ticker = t.ticker
-        qty = float(t.quantity)
-        price = float(t.price)
-        
-        if t.side == "BUY":
-            prev_shares = shares.get(ticker, 0.0)
-            prev_cost = cost_basis_total.get(ticker, 0.0)
-            new_shares = prev_shares + qty
-            new_cost = prev_cost + (qty * price)
-            shares[ticker] = new_shares
-            cost_basis_total[ticker] = new_cost
-            
-        elif t.side == "SELL":
-            owned = shares.get(ticker, 0.0)
-            if owned <= 0:
-                # No known cost basis; treat avg_cost as 0 (best effort)
-                realized_pl += qty * price
-                continue
-            
-            sell_qty = qty if qty <= owned else owned
-            avg_cost = (cost_basis_total.get(ticker, 0.0) / owned) if owned > 0 else 0.0
-            
-            realized_pl += (price - avg_cost) * sell_qty
-            
-            remaining = owned - sell_qty
-            if remaining <= 0:
-                shares.pop(ticker, None)
-                cost_basis_total.pop(ticker, None)
-            else:
-                shares[ticker] = remaining
-                cost_basis_total[ticker] = avg_cost * remaining
-                
-    avg_cost: dict[str, float] = {}
-    for ticker, sh in shares.items():
-        total_cost = cost_basis_total.get(ticker, 0.0)
-        avg_cost[ticker] = (total_cost / sh) if sh > 0 else 0.0
-        
-    return avg_cost, shares, realized_pl
+
+def _extract_period_from_trade_lines(trades: list[TradeLine]) -> tuple[str | None, str | None]:
+    """Get (start,end) ISO timestamps from trade timestamps (best effort)."""
+    dts = [_parse_iso_ts(t.timestamp) for t in trades]
+    dts = [d for d in dts if d is not None]
+    if not dts:
+        return None, None
+    start = min(dts).isoformat().replace("+00:00", "Z")
+    end = max(dts).isoformat().replace("+00:00", "Z")
+    return start, end
 
 
 def build_report_data(
@@ -231,24 +195,13 @@ def build_report_data(
 
     provider = price_provider or _default_price_provider
 
-    records = _read_transaction_records(tx_path)
-    trade_lines = [tl for tl in (_to_trade_line(r) for r in records) if tl is not None]
-
-    # Period range from history (best effort)
-    times = [_parse_iso_ts(t.timestamp) for t in trade_lines]
-    times = [t for t in times if t is not None]
-    period_start = (min(times).isoformat().replace("+00:00", "Z") if times else None)
-    period_end = (max(times).isoformat().replace("+00:00", "Z") if times else None)
-
-    avg_cost, _shares_from_history, realized_pl = _compute_cost_basis_and_realized_pnl(trade_lines)
+    # End-state truth for holdings + valuation.
+    holdings = {k.upper(): float(v) for k, v in (portfolio.holdings or {}).items()}
+    cash = float(portfolio.cash)
 
     notes: list[str] = []
     prices: dict[str, float] = {}
 
-    # Use *portfolio holdings* as end-state truth for holdings + valuation.
-    holdings = {k.upper(): float(v) for k, v in (portfolio.holdings or {}).items()}
-
-    # Fetch prices (best effort; never crash report due to price issues).
     for ticker in holdings.keys():
         try:
             prices[ticker] = float(provider(ticker))
@@ -256,27 +209,42 @@ def build_report_data(
             prices[ticker] = 0.0
             notes.append(f"Price unavailable for {ticker}; valued as 0.00.")
 
-    holdings_value = 0.0
-    unrealized_pl = 0.0
-
-    for ticker, qty in holdings.items():
-        px = prices.get(ticker, 0.0)
-        holdings_value += qty * px
-        basis = avg_cost.get(ticker, 0.0)
-        unrealized_pl += (px - basis) * qty
-
-    cash = float(portfolio.cash)
+    holdings_value = sum(qty * prices.get(t, 0.0) for t, qty in holdings.items())
     total_value = cash + holdings_value
-    total_pl = realized_pl + unrealized_pl
 
+    # Trade history: we keep JSON parsing (no pandas required for report basics).
+    records = _read_transaction_records(tx_path)
+    trade_lines = [tl for tl in (_to_trade_line(r) for r in records) if tl is not None]
+
+    trades_count = len(trade_lines)
+    period_start, period_end = _extract_period_from_trade_lines(trade_lines)
     recent_trades = list(reversed(trade_lines[-recent_n:])) if recent_n > 0 else []
+
+    # P/L: prefer TR-241 analytics (single source of truth) when available.
+    realized_pl = 0.0
+    unrealized_pl = 0.0
+    total_pl = 0.0
+
+    if callable(compute_pl) and callable(load_transactions_df):
+        try:
+            df = load_transactions_df(tx_path)  # analytics handles missing/invalid safely
+            pl = compute_pl(df=df, latest_prices=prices)
+            realized_pl = float(pl.get("realized_pl", 0.0))
+            unrealized_pl = float(pl.get("unrealized_pl", 0.0))
+            total_pl = float(pl.get("total_pl", realized_pl + unrealized_pl))
+        except Exception:
+            log.warning("Analytics compute_pl failed; defaulting P/L to 0.", exc_info=True)
+            notes.append("P/L unavailable (analytics failed); showing 0.00.")
+            realized_pl = unrealized_pl = total_pl = 0.0
+    else:
+        notes.append("P/L unavailable (analytics not installed); showing 0.00.")
 
     return ReportData(
         generated_at=generated_at,
         period_label=period_label,
         period_start=period_start,
         period_end=period_end,
-        trades_count=len(trade_lines),
+        trades_count=trades_count,
         realized_pl=realized_pl,
         unrealized_pl=unrealized_pl,
         total_pl=total_pl,
@@ -288,8 +256,8 @@ def build_report_data(
         recent_trades=recent_trades,
         notes=notes,
     )
-    
-    
+
+
 def render_report(data: ReportData) -> str:
     """Render ReportData to a human-readable text report."""
     lines: list[str] = []
@@ -368,8 +336,8 @@ def write_report_text(
     except OSError as exc:
         log.error("Failed to write report file: %s", out_path, exc_info=True)
         raise FileError(f"Could not write report to '{out_path}': {exc}") from exc
-    
-    
+
+
 def generate_and_write_report(
     *,
     portfolio: Portfolio,
