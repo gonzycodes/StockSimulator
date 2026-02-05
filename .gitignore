@@ -224,3 +224,4 @@ logs/
 data/portfolio.json
 *.json
 data/snapshots.csv
+data/report*.txt
