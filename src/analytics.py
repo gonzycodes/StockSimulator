@@ -12,13 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 import pandas as pd
-from src.config import DATA_DIR
+from src.config import TRANSACTIONS_FILE
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
 from src.logger import get_logger
 
 log = get_logger(__name__)
-
-TRANSACTIONS_FILE = DATA_DIR / "transactions.json"
 
 
 def load_transactions_df(path: Path | None = None) -> pd.DataFrame:
