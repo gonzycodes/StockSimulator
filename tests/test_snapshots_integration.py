@@ -17,12 +17,24 @@ def test_two_trades_write_two_snapshots(tmp_path):
 
     path = tmp_path / "snapshots.csv"
     store = SnapshotStore(path=path, clock=clock)
-    tm = TransactionManager(snapshot_store=store)
 
     p = Portfolio(cash=1000.0)
 
-    tm.buy(p, "AAPL", 2, 100.0)   # cash -> 800, holdings_value -> 2*100=200, total -> 1000
-    tm.sell(p, "AAPL", 1, 110.0)  # cash -> 910, remaining=1, holdings_value -> 1*110=110, total -> 1020
+    prices = {"AAPL": 100.0}
+
+    def price_provider(ticker: str) -> float:
+        return float(prices[ticker])
+
+    tm = TransactionManager(
+        portfolio=p,
+        price_provider=price_provider,
+        snapshot_store=store,
+    )
+
+    tm.buy("AAPL", 2)     # cash -> 800, holdings_value -> 2*100=200, total -> 1000
+
+    prices["AAPL"] = 110.0
+    tm.sell("AAPL", 1)    # cash -> 910, remaining=1, holdings_value -> 1*110=110, total -> 1020
 
     with path.open("r", encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
