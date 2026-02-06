@@ -258,12 +258,12 @@ def execute_trade():
         portfolio = load_portfolio()
         
         # Create TransactionManager instance for this trade
-        tm = TransactionManager(snapshot_store=SnapshotStore())
+        tm = TransactionManager(portfolio=portfolio, snapshot_store=SnapshotStore())
         
         if action == 'buy':
-            tx = tm.buy(portfolio, ticker, quantity, price)
+            tx = tm.buy(ticker, quantity)
         else:
-            tx = tm.sell(portfolio, ticker, quantity, price)
+            tx = tm.sell(ticker, quantity)
         
         # Save portfolio
         save_portfolio(portfolio)

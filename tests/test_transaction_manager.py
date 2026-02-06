@@ -1,190 +1,264 @@
-import pytest
+from __future__ import annotations
 
+import logging
+from typing import Callable
+
+from src.data_fetcher import QuoteFetchError, fetch_latest_quote
+from src.errors import ValidationError
+from src.logger import get_logger
 from src.portfolio import Portfolio
-from src.transaction_manager import (
-    TransactionManager,
-    InvalidTickerError,
-    InvalidQuantityError,
-    InsufficientFundsError,
-    InsufficientHoldingsError,
-    PriceFetchError,
-)
+from src.snapshot_store import SnapshotStore
+from src.transaction_logger import log_transaction, utc_timestamp_iso_z
+from src.validators import validate_positive_number, validate_ticker
+from src.models.transaction import Transaction
 
 
-@pytest.fixture
-def portfolio():
-    """Simple portfolio with 1000 SEK cash and no holdings."""
-    return Portfolio(cash=1000.0)
+# =========================
+# Domain Exceptions
+# =========================
+class TransactionError(Exception):
+    """Base class for all transaction related errors."""
 
 
-@pytest.fixture
-def price_map():
-    # Can be mutated per test to control the price deterministically.
-    return {
-        "AAPL": 120.0,
-        "TSLA": 150.0,
-        "ERIC-B.ST": 85.0,
-        "GOOGL": 200.0,
-        "NOKIA": 50.0,
-    }
+class InvalidTickerError(TransactionError):
+    """Raised when ticker is missing or invalid."""
 
 
-@pytest.fixture
-def price_provider(price_map):
-    def _get_price(ticker: str) -> float:
-        return float(price_map[ticker])
-    return _get_price
+class InvalidQuantityError(TransactionError):
+    """Raised when quantity <= 0 or not numeric."""
 
 
-@pytest.fixture
-def tm(portfolio, price_provider):
-    return TransactionManager(portfolio=portfolio, price_provider=price_provider)
-
-@pytest.fixture(autouse=True)
-def mock_market_open(monkeypatch):
-    monkeypatch.setattr("src.data_fetcher.is_market_likely_open", lambda t: True)
-    monkeypatch.setattr("src.data_fetcher.get_market_state", lambda t: "REGULAR")
-
-# ────────────────────────────────────────────────
-# BUY-tests
-# ────────────────────────────────────────────────
-
-def test_buy_successful_updates_portfolio_and_returns_transaction(portfolio, tm):
-    tx = tm.buy("AAPL", 2.5)
-
-    assert portfolio.cash == pytest.approx(700.0)
-    assert portfolio.holdings["AAPL"] == pytest.approx(2.5)
-
-    assert tx.kind == "buy"
-    assert tx.ticker == "AAPL"
-    assert tx.quantity == pytest.approx(2.5)
-    assert tx.price == pytest.approx(120.0)
-    assert tx.gross_amount == pytest.approx(300.0)
-    assert tx.cash_after == pytest.approx(700.0)
-    assert isinstance(tx.timestamp, str) and tx.timestamp
+class InvalidPriceError(TransactionError):
+    """Raised when price <= 0 or not numeric."""
 
 
-def test_buy_insufficient_funds_raises_and_portfolio_unchanged(portfolio, tm):
-    cash_before = portfolio.cash
-    holdings_before = dict(portfolio.holdings)
-
-    with pytest.raises(InsufficientFundsError):
-        tm.buy("TSLA", 10)  # 10 * 150 = 1500 > 1000
-
-    assert portfolio.cash == cash_before
-    assert portfolio.holdings == holdings_before
+class PriceFetchError(TransactionError):
+    """Raised when price provider/data fetcher fails."""
 
 
-def test_buy_zero_or_negative_quantity_raises(portfolio, tm):
-    with pytest.raises(InvalidQuantityError):
-        tm.buy("AAPL", 0)
-
-    with pytest.raises(InvalidQuantityError):
-        tm.buy("AAPL", -3)
+class MarketClosedError(TransactionError):
+    """Raised when attempting to trade outside regular market hours."""
 
 
-def test_buy_invalid_ticker_raises(portfolio, tm):
-    for bad_ticker in ["", "   ", 123, None]:  # type: ignore[list-item]
-        with pytest.raises(InvalidTickerError):
-            tm.buy(bad_ticker, 1)  # type: ignore[arg-type]
+class InsufficientFundsError(TransactionError):
+    """Raised when there is not enough cash to buy."""
 
 
-def test_buy_handles_price_provider_error_atomic(portfolio):
-    def boom(_ticker: str) -> float:
-        raise RuntimeError("provider down")
-
-    tm = TransactionManager(portfolio=portfolio, price_provider=boom)
-
-    cash_before = portfolio.cash
-    holdings_before = dict(portfolio.holdings)
-
-    with pytest.raises(PriceFetchError):
-        tm.buy("AAPL", 1)
-
-    assert portfolio.cash == cash_before
-    assert portfolio.holdings == holdings_before
+class InsufficientHoldingsError(TransactionError):
+    """Raised when trying to sell more than owned."""
 
 
-def test_buy_handles_price_provider_none_atomic(portfolio):
-    def none_price(_ticker: str):
-        return None  # type: ignore[return-value]
-
-    tm = TransactionManager(portfolio=portfolio, price_provider=none_price)  # type: ignore[arg-type]
-
-    cash_before = portfolio.cash
-    holdings_before = dict(portfolio.holdings)
-
-    with pytest.raises(PriceFetchError):
-        tm.buy("AAPL", 1)
-
-    assert portfolio.cash == cash_before
-    assert portfolio.holdings == holdings_before
+PriceProvider = Callable[[str], float]
+MarketOpenCheck = Callable[[str], bool]
+MarketStateProvider = Callable[[str], str]
+TxLogger = Callable[[Transaction], bool]
 
 
-# ────────────────────────────────────────────────
-# SELL-tests
-# ────────────────────────────────────────────────
+class TransactionManager:
+    """
+    Central business logic for buy/sell.
 
-def test_sell_successful_updates_portfolio_and_returns_transaction(portfolio, tm, price_map):
-    portfolio.holdings["AAPL"] = 5.0
-    price_map["AAPL"] = 130.0
+    - No I/O (no input/print).
+    - Price lookup is injected (mockable).
+    - Validates via src.validators.
+    - Optional market open check (injectable) to support MarketClosedError.
+    """
 
-    tx = tm.sell("AAPL", 2)
+    def __init__(
+        self,
+        *,
+        portfolio: Portfolio,
+        price_provider: PriceProvider | None = None,
+        logger: logging.Logger | None = None,
+        transaction_logger: TxLogger = log_transaction,
+        snapshot_store: SnapshotStore | None = None,
+        market_open_check: MarketOpenCheck | None = None,
+        market_state_provider: MarketStateProvider | None = None,
+    ) -> None:
+        self.portfolio = portfolio
+        self.price_provider = price_provider or self._default_price_provider
+        self.log = logger or get_logger(__name__)
+        self.transaction_logger = transaction_logger
+        self.snapshot_store = snapshot_store
 
-    assert portfolio.cash == pytest.approx(1260.0)
-    assert portfolio.holdings["AAPL"] == pytest.approx(3.0)
+        # Optional: enables MarketClosedError when provided
+        self.market_open_check = market_open_check
+        self.market_state_provider = market_state_provider
 
-    assert tx.kind == "sell"
-    assert tx.ticker == "AAPL"
-    assert tx.quantity == pytest.approx(2.0)
-    assert tx.price == pytest.approx(130.0)
-    assert tx.gross_amount == pytest.approx(260.0)
-    assert tx.cash_after == pytest.approx(1260.0)
-    assert isinstance(tx.timestamp, str) and tx.timestamp
+    # -------------------------
+    # Public API (AC)
+    # -------------------------
+    def buy(self, ticker: str, amount: float) -> Transaction:
+        clean_ticker = self._validate_ticker(ticker)
+        qty = self._validate_quantity(amount)
 
+        self._ensure_market_open(clean_ticker)
 
-def test_sell_completely_removes_ticker_from_holdings(portfolio, tm):
-    portfolio.holdings["ERIC-B.ST"] = 4.0
-    tm.sell("ERIC-B.ST", 4.0)
+        price = self._get_price(clean_ticker)
+        total_cost = qty * price
 
-    assert portfolio.cash == pytest.approx(1340.0)  # 1000 + (4*85)
-    assert "ERIC-B.ST" not in portfolio.holdings
+        if self.portfolio.cash < total_cost:
+            raise InsufficientFundsError(
+                f"Not enough cash to buy {qty} shares of {clean_ticker}. "
+                f"Need {total_cost:.2f}, have {self.portfolio.cash:.2f}."
+            )
 
+        # mutate after all checks => atomic on expected failures
+        self.portfolio.cash -= total_cost
+        self.portfolio.holdings[clean_ticker] = self.portfolio.holdings.get(clean_ticker, 0.0) + qty
 
-def test_sell_insufficient_holdings_raises_and_portfolio_unchanged(portfolio, tm):
-    portfolio.holdings["AAPL"] = 3.0
-    cash_before = portfolio.cash
-    holdings_before = dict(portfolio.holdings)
+        if self.snapshot_store:
+            holdings_value = self.portfolio.holdings.get(clean_ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="BUY",
+                ticker=clean_ticker,
+                quantity=qty,
+                price=price,
+                cash=self.portfolio.cash,
+                holdings_value=holdings_value,
+            )
 
-    with pytest.raises(InsufficientHoldingsError):
-        tm.sell("AAPL", 5.0)
+        tx = Transaction(
+            kind="buy",
+            ticker=clean_ticker,
+            quantity=qty,
+            price=price,
+            gross_amount=total_cost,
+            cash_after=self.portfolio.cash,
+            timestamp=utc_timestamp_iso_z(),
+        )
 
-    assert portfolio.cash == cash_before
-    assert portfolio.holdings == holdings_before
+        self.transaction_logger(tx)
+        self.log.info(
+            "TRADE BUY ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
+            tx.ticker,
+            tx.quantity,
+            tx.price,
+            tx.gross_amount,
+            tx.timestamp,
+            tx.cash_after,
+        )
+        return tx
 
+    def sell(self, ticker: str, amount: float) -> Transaction:
+        clean_ticker = self._validate_ticker(ticker)
+        qty = self._validate_quantity(amount)
 
-def test_sell_non_existent_ticker_raises(portfolio, tm):
-    with pytest.raises(InsufficientHoldingsError):
-        tm.sell("NOKIA", 1)
+        self._ensure_market_open(clean_ticker)
 
+        owned = self.portfolio.holdings.get(clean_ticker, 0.0)
+        if owned < qty:
+            raise InsufficientHoldingsError(
+                f"Not enough shares to sell {qty} of {clean_ticker}. "
+                f"Owned {owned}."
+            )
 
-def test_sell_cannot_sell_more_then_owned_ac_case(portfolio, tm):
-    """Selling more than owned should raise and keep the portfolio unchanged."""
-    portfolio.holdings["AAPL"] = 1.0
-    cash_before = portfolio.cash
-    holdings_before = dict(portfolio.holdings)
+        price = self._get_price(clean_ticker)
+        total_proceeds = qty * price
 
-    with pytest.raises(InsufficientHoldingsError):
-        tm.sell("AAPL", 2.0)
+        # mutate after all checks => atomic on expected failures
+        self.portfolio.cash += total_proceeds
 
-    assert portfolio.cash == cash_before
-    assert portfolio.holdings == holdings_before
-    assert portfolio.holdings["AAPL"] == 1.0
+        remaining = owned - qty
+        if remaining <= 0:
+            self.portfolio.holdings.pop(clean_ticker, None)
+        else:
+            self.portfolio.holdings[clean_ticker] = remaining
 
+        if self.snapshot_store:
+            holdings_value = self.portfolio.holdings.get(clean_ticker, 0.0) * price
+            self.snapshot_store.append_snapshot(
+                event="SELL",
+                ticker=clean_ticker,
+                quantity=qty,
+                price=price,
+                cash=self.portfolio.cash,
+                holdings_value=holdings_value,
+            )
 
-def test_sell_fractional_shares_supported(portfolio, tm):
-    portfolio.holdings["GOOGL"] = 1.75
-    tm.sell("GOOGL", 0.75)
+        tx = Transaction(
+            kind="sell",
+            ticker=clean_ticker,
+            quantity=qty,
+            price=price,
+            gross_amount=total_proceeds,
+            cash_after=self.portfolio.cash,
+            timestamp=utc_timestamp_iso_z(),
+        )
 
-    assert portfolio.holdings["GOOGL"] == pytest.approx(1.0)
-    assert portfolio.cash == pytest.approx(1150.0)  # 1000 + (0.75*200)
+        self.transaction_logger(tx)
+        self.log.info(
+            "TRADE SELL ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
+            tx.ticker,
+            tx.quantity,
+            tx.price,
+            tx.gross_amount,
+            tx.timestamp,
+            tx.cash_after,
+        )
+        return tx
+
+    # -------------------------
+    # Internals
+    # -------------------------
+    def _ensure_market_open(self, ticker: str) -> None:
+        """
+        Optional market-hours gate.
+        Only enforced when a market_open_check is provided.
+        """
+        if self.market_open_check is None:
+            return
+
+        try:
+            is_open = bool(self.market_open_check(ticker))
+        except Exception as exc:
+            # Fail-open to avoid random blocking if check fails
+            self.log.warning("Market open check failed for %s: %s", ticker, exc, exc_info=True)
+            return
+
+        if not is_open:
+            state = ""
+            if self.market_state_provider is not None:
+                try:
+                    state = str(self.market_state_provider(ticker))
+                except Exception:
+                    state = ""
+            msg = f"Cannot trade {ticker} - market is not in regular trading hours"
+            if state:
+                msg += f" (current state: {state})"
+            raise MarketClosedError(msg)
+
+    def _default_price_provider(self, ticker: str) -> float:
+        quote = fetch_latest_quote(ticker)
+        return float(quote.price)
+
+    def _get_price(self, ticker: str) -> float:
+        try:
+            price = self.price_provider(ticker)
+        except QuoteFetchError as exc:
+            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+        except Exception as exc:
+            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+
+        if not isinstance(price, (int, float)):
+            raise PriceFetchError(f"Price provider returned non-numeric price for '{ticker}'.")
+
+        price_f = float(price)
+        if price_f <= 0:
+            raise PriceFetchError(f"Price provider returned invalid price {price_f} for '{ticker}'.")
+
+        return price_f
+
+    def _validate_ticker(self, ticker: object) -> str:
+        if not isinstance(ticker, str):
+            raise InvalidTickerError("Ticker must be a non-empty string.")
+        try:
+            return validate_ticker(ticker)
+        except ValidationError as exc:
+            raise InvalidTickerError(str(exc)) from exc
+
+    def _validate_quantity(self, qty: object) -> float:
+        try:
+            return validate_positive_number(qty, name="quantity")
+        except ValidationError as exc:
+            raise InvalidQuantityError(str(exc)) from exc

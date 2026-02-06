@@ -56,7 +56,7 @@ def test_buy_appends_to_transaction_history(portfolio, tm, price_map, temp_trans
     assert data[0]["cash_after"] == pytest.approx(8500.0)
 
 
-def test_sell_appends_to_transaction_history(portfolio, tm, temp_transactions_file):
+def test_sell_appends_to_transaction_history(portfolio, tm, price_map, temp_transactions_file):
     portfolio.holdings["AAPL"] = 15.0
 
     price_map["AAPL"] = 160.0
