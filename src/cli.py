@@ -8,14 +8,15 @@ from typing import Dict
 
 from json import JSONDecodeError
 
-from src.transaction_manager import (
-    TransactionManager,
-    MarketClosedError,
-    InsufficientFundsError,
-    InsufficientHoldingsError
-)
 
 # Data fetch och errors
+from src.transactions import (
+    TransactionManager,
+    TransactionError,
+    MarketClosedError,
+    InsufficientFundsError,
+    InsufficientHoldingsError,
+)
 from src.data_fetcher import QuoteFetchError, fetch_latest_quote
 
 # Portfolio, config, errors, validators, formatters
@@ -25,18 +26,21 @@ from src.errors import FileError, ValidationError
 from src.validators import validate_ticker, validate_positive_float
 from src.formatters import format_portfolio_output
 from src.snapshot_store import SnapshotStore
-from src.transaction_manager import TransactionManager, TransactionError
+
+# Analytics
+from src.analytics import compute_pl
+
+# Reporting
+from src.reporting import generate_and_write_report
 
 try:
     from src.logger import init_logging, get_logger
 
     log = get_logger(__name__)
-    tm = TransactionManager(snapshot_store=SnapshotStore())
     
 except Exception:  # pragma: no cover
     # Fallback if src.logger is not available yet
     import logging
-    from pathlib import Path
 
     def init_logging(
         *,
@@ -116,6 +120,11 @@ def build_parser() -> argparse.ArgumentParser:
     
     p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
 
+    sub.add_parser("analytics", help="Show Profit/Loss (realized + unrealized) from transactions.")
+    
+    r = sub.add_parser("report", help="Generate a daily trade report to data.")
+    r.add_argument("--recent", type=int, default=5, help="Include last N trades (default: 5)")
+
     sub.add_parser("save", help="Manually save the current portfolio to disk.")
     sub.add_parser("load", help="Manually reload the portfolio from disk.")
 
@@ -188,23 +197,14 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
         ticker = validate_ticker(ticker_raw)
         valid_quantity = validate_positive_float(str(quantity))
 
-        print(f"Fetching price for {ticker}...")
-        quote = fetch_latest_quote(ticker)
-        price = float(quote.price)
-
         portfolio = load_portfolio()
-        
-        # Use TransactionManager instead of direct portfolio.buy()
-        tm = TransactionManager()
-        tx = tm.buy(portfolio, ticker, valid_quantity, price)  
-        
+        tm = TransactionManager(portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log)
+
+        tx = tm.buy(ticker, valid_quantity)
         save_portfolio(portfolio)
-        
-        total_cost = tx.gross_amount
-        print(f"SUCCESS: Bought {valid_quantity} shares of {ticker} at {price:.2f}.")
-        print(f"Cost: {total_cost:.2f}. New Cash Balance: {tx.cash_after:.2f}")
-        
-        log.info(f"BOUGHT {ticker}: qty={valid_quantity} price={price} total={total_cost}")
+
+        print(f"SUCCESS: Bought {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
+        print(f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
         return 0
     
     except MarketClosedError as e:
@@ -217,8 +217,8 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
         return 1
-    except QuoteFetchError as exc:
-        print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+    except TransactionError as exc:
+        print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
     except FileError as exc:
         print(f"File Error: {exc}", file=sys.stderr)
@@ -237,23 +237,14 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         ticker = validate_ticker(ticker_raw)
         valid_quantity = validate_positive_float(str(quantity))
 
-        print(f"Fetching price for {ticker}...")
-        quote = fetch_latest_quote(ticker)
-        price = float(quote.price)
-
         portfolio = load_portfolio()
-        
-        # Use TransactionManager instead of direct portfolio.sell()
-        tm = TransactionManager()
-        tx = tm.sell(portfolio, ticker, valid_quantity, price)  
-        
+        tm = TransactionManager(portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log)
+
+        tx = tm.sell(ticker, valid_quantity)
         save_portfolio(portfolio)
 
-        total_sale = tx.gross_amount
-        print(f"SUCCESS: Sold {valid_quantity} shares of {ticker} at {price:.2f}.")
-        print(f"Proceeds: {total_sale:.2f}. New Cash Balance: {tx.cash_after:.2f}")
-        
-        log.info(f"SOLD {ticker}: qty={valid_quantity} price={price} total={total_sale}")
+        print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
+        print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
         return 0
 
     except MarketClosedError as e:
@@ -266,8 +257,8 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
     except ValidationError as e:
         print(f"Input Error: {e}", file=sys.stderr)
         return 1
-    except QuoteFetchError as exc:
-        print(f"Market Error: Could not fetch price for {ticker_raw}. ({exc})", file=sys.stderr)
+    except TransactionError as exc:
+        print(f"Transaction Failed: {exc}", file=sys.stderr)
         return 1
     except FileError as exc:
         print(f"File Error: {exc}", file=sys.stderr)
@@ -297,7 +288,54 @@ def cmd_portfolio() -> int:
     except Exception as exc:
         log.exception("Unexpected error during portfolio command")
         print(f"System error: {exc}", file=sys.stderr)
-        return 1        
+        return 1
+
+
+def cmd_analytics() -> int:
+    """
+    Execute the analytics command (TR-241).
+    Prints a simple dict for now (presentation via CLI).
+    """
+    try:
+        result = compute_pl()
+        print(result)
+        return 0
+    except Exception as exc:
+        log.exception("Unexpected error during analytics command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1
+    
+    
+def cmd_report(recent: int = 5) -> int:
+    """
+    Execute the report command (TR-244).
+
+    Writes a text report to data/report_YYYY-MM-DD.txt.
+    """
+    try:
+        portfolio = load_portfolio()
+
+        def price_provider(ticker: str) -> float:
+            quote = fetch_latest_quote(ticker)
+            return float(quote.price)
+
+        out_path = generate_and_write_report(
+            portfolio=portfolio,
+            price_provider=price_provider,
+            recent_n=recent,
+        )
+
+        print(f"Report written to {out_path}")
+        return 0
+
+    except FileError as exc:
+        print(f"File Error: {exc}", file=sys.stderr)
+        return 1
+
+    except Exception as exc:
+        log.exception("Unexpected error during report command")
+        print(f"System error: {exc}", file=sys.stderr)
+        return 1
 
 
 def cmd_save() -> int:
@@ -352,6 +390,12 @@ def main(argv: list[str] | None = None) -> int:
 
         elif args.command == "portfolio":
             return cmd_portfolio()
+        
+        elif args.command == "analytics":
+            return cmd_analytics()
+        
+        elif args.command == "report":
+            return cmd_report(args.recent)
             
         elif args.command == "save":
             return cmd_save()
