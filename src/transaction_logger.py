@@ -1,12 +1,10 @@
 from src.logger import get_logger
-from src.config import DATA_DIR
+from src.config import TRANSACTIONS_FILE
 from datetime import datetime, timezone
 import json
 from src.models.transaction import Transaction
 
 log = get_logger(__name__)
-
-TRANSACTIONS_FILE = DATA_DIR / "transactions.json"  # from config
 
 
 def log_transaction(tx: Transaction) -> bool:
@@ -40,7 +38,7 @@ def log_transaction(tx: Transaction) -> bool:
         TRANSACTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
         with TRANSACTIONS_FILE.open("w", encoding="utf-8") as f:
             json.dump(existing, f, indent=2, ensure_ascii=False)
-        
+
         log.info(
             "Transaction logged: %s %s qty=%.2f price=%.2f total=%.2f ts=%s cash_after=%.2f",
             record["side"],
@@ -52,12 +50,12 @@ def log_transaction(tx: Transaction) -> bool:
             float(record["cash_after"]),
         )
         return True
-    
+
     except OSError as e:
         log.error("Failed to save transactions history: %s", e)
         print("Warning: Couldn't save  transactions historiy – check writing rights.")
         return False
-    
+
 
 def utc_timestamp_iso_z() -> str:
     """Return current UTC timestamp as ISO 8601 with Z suffix."""

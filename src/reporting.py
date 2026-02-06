@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from src.config import DATA_DIR
+from src.config import DATA_DIR, TRANSACTIONS_FILE
 from src.errors import FileError
 from src.portfolio import Portfolio
 
@@ -44,7 +44,6 @@ except Exception:  # pragma: no cover
 
 log = (get_logger(__name__) if callable(get_logger) else logging.getLogger(__name__))
 
-TRANSACTIONS_FILE = DATA_DIR / "transactions.json"
 Clock = Callable[[], datetime]
 PriceProvider = Callable[[str], float]
 

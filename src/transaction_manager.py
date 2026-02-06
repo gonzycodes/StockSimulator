@@ -51,6 +51,7 @@ class InsufficientHoldingsError(TransactionError):
 PriceProvider = Callable[[str], float]
 MarketOpenCheck = Callable[[str], bool]
 MarketStateProvider = Callable[[str], str]
+TxLogger = Callable[[Transaction], bool]
 
 
 class TransactionManager:
@@ -69,6 +70,7 @@ class TransactionManager:
         portfolio: Portfolio,
         price_provider: PriceProvider | None = None,
         logger: logging.Logger | None = None,
+        transaction_logger: TxLogger = log_transaction,
         snapshot_store: SnapshotStore | None = None,
         market_open_check: MarketOpenCheck | None = None,
         market_state_provider: MarketStateProvider | None = None,
@@ -76,6 +78,7 @@ class TransactionManager:
         self.portfolio = portfolio
         self.price_provider = price_provider or self._default_price_provider
         self.log = logger or get_logger(__name__)
+        self.transaction_logger = transaction_logger
         self.snapshot_store = snapshot_store
 
         # Optional: enables MarketClosedError when provided
@@ -125,7 +128,7 @@ class TransactionManager:
             timestamp=utc_timestamp_iso_z(),
         )
 
-        log_transaction(tx)
+        self.transaction_logger(tx)
         self.log.info(
             "TRADE BUY ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
             tx.ticker,
@@ -183,7 +186,7 @@ class TransactionManager:
             timestamp=utc_timestamp_iso_z(),
         )
 
-        log_transaction(tx)
+        self.transaction_logger(tx)
         self.log.info(
             "TRADE SELL ticker=%s qty=%s price=%s total=%s ts=%s cash_after=%s",
             tx.ticker,
