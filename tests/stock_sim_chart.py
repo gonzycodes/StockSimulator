@@ -124,7 +124,6 @@ class TestTradeEndpoint:
             data=json.dumps(trade_data),
             content_type='application/json'
         )
-        
         # May succeed or fail based on market conditions
         assert response.status_code in [200, 400]
     

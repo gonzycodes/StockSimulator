@@ -1,8 +1,8 @@
 """
-Flask API server for TradeSim Chart Interface.
+Flask API server for STOCK SIMULATOR Chart Interface.
 
 Provides REST endpoints for the chart trading interface to interact with
-the existing TradeSim portfolio and market data functionality.
+the existing STOCK SIMULATOR portfolio and market data functionality.
 """
 
 from flask import Flask, jsonify, request
@@ -338,7 +338,7 @@ def health_check():
 
 if __name__ == '__main__':
     init_logging(level='INFO')
-    log.info("Starting TradeSim Chart API server")
+    log.info("Starting STOCK SIMULATOR Chart API server")
     
     # Ensure data directory exists
     try:
@@ -348,7 +348,7 @@ if __name__ == '__main__':
         log.error(f"Failed to create data directory: {e}")
     
     print("\n" + "="*60)
-    print("🚀 TradeSim Chart API Server")
+    print("🚀 STOCK SIMULATOR Chart API Server")
     print("="*60)
     print(f"📡 API running at: http://localhost:5000")
     print(f"📊 Chart UI at: trading_chart.html")
