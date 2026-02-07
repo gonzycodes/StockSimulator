@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STOCK SIMULATOR - Chart Trading Interface</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">⚡ STOCK SIMULATOR</div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-label">Cash Balance</span>
+                    <span class="status-value" id="cashBalance">10,000.00 SEK</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Portfolio Value</span>
+                    <span class="status-value" id="portfolioValue">10,000.00 SEK</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">P/L</span>
+                    <span class="status-value" id="profitLoss">+0.00 SEK</span>
+                </div>
+            </div>
+        </header>
+
+        <aside class="market-selector">
+            <div class="market-category">
+                <h3 class="category-title">🇺🇸 US Stocks</h3>
+                <div class="symbol-list" id="stocksList">
+                    <div class="symbol-item active" data-symbol="AAPL">
+                        <span class="symbol-name">AAPL</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="MSFT">
+                        <span class="symbol-name">MSFT</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="GOOGL">
+                        <span class="symbol-name">GOOGL</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="AMZN">
+                        <span class="symbol-name">AMZN</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="TSLA">
+                        <span class="symbol-name">TSLA</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="market-category">
+                <h3 class="category-title">₿ Crypto</h3>
+                <div class="symbol-list" id="cryptoList">
+                    <div class="symbol-item" data-symbol="BTC-USD">
+                        <span class="symbol-name">BTC</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="ETH-USD">
+                        <span class="symbol-name">ETH</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="SOL-USD">
+                        <span class="symbol-name">SOL</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="market-category">
+                <h3 class="category-title">🌍 Forex</h3>
+                <div class="symbol-list" id="forexList">
+                    <div class="symbol-item" data-symbol="EURUSD=X">
+                        <span class="symbol-name">EUR/USD</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="GBPUSD=X">
+                        <span class="symbol-name">GBP/USD</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                    <div class="symbol-item" data-symbol="USDSEK=X">
+                        <span class="symbol-name">USD/SEK</span>
+                        <span class="symbol-price">--</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="chart-area">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <span class="current-symbol" id="currentSymbol">AAPL</span>
+                    <span class="current-price" id="currentPrice">--</span>
+                    <span class="price-change positive" id="priceChange">+0.00%</span>
+                    <span class="live-indicator" id="liveIndicator">
+                        <span class="live-dot"></span>
+                        LIVE
+                    </span>
+                </div>
+                <div class="chart-controls">
+                    <button class="fixed-scale-btn" id="fixedScaleBtn" title="Auto-scale to current price">
+                        <span class="scale-icon">⊙</span>
+                        Fixed Scale
+                    </button>
+                    <div class="trade-markers-legend">
+                        <span class="legend-item">
+                            <span class="marker-icon buy">▲</span>
+                            Entry
+                        </span>
+                        <span class="legend-item">
+                            <span class="marker-icon sell">▼</span>
+                            Exit
+                        </span>
+                    </div>
+                    <div class="timeframe-selector">
+                    <button class="timeframe-btn" data-period="1h" data-interval="1m">1m</button>
+                    <button class="timeframe-btn" data-period="1d" data-interval="5m">5m</button>
+                    <button class="timeframe-btn active" data-period="5d" data-interval="15m">15m</button>
+                    <button class="timeframe-btn" data-period="1mo" data-interval="1h">1h</button>
+                    <button class="timeframe-btn" data-period="1mo" data-interval="1d">1D</button>
+                    <button class="timeframe-btn" data-period="1y" data-interval="1wk">1W</button>
+                </div>
+                </div>
+            </div>
+            <div id="chart"></div>
+        </main>
+
+        <aside class="trading-panel">
+            <div class="panel-section">
+                <h3 class="section-title">Place Order</h3>
+                
+                <div class="order-type-selector">
+                    <button class="order-type-btn active" data-type="market">Market</button>
+                    <button class="order-type-btn" data-type="limit">Limit</button>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Quantity</label>
+                    <input type="number" class="input-field" id="quantityInput" value="1" min="0.01" step="0.01">
+                </div>
+
+                <div class="input-group" id="limitPriceGroup" style="display: none;">
+                    <label class="input-label">Limit Price</label>
+                    <input type="number" class="input-field" id="limitPriceInput" value="0" min="0" step="0.01">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Est. Total</label>
+                    <input type="text" class="input-field" id="totalEstimate" readonly value="--">
+                </div>
+
+                <div class="action-buttons">
+                    <button class="trade-btn buy-btn" id="buyBtn">Buy</button>
+                    <button class="trade-btn sell-btn" id="sellBtn">Sell</button>
+                </div>
+                
+                <!-- Stop Loss Section -->
+                <div class="stop-loss-section">
+                    <div class="section-divider"></div>
+                    <label class="input-label">
+                        <span>🛡️ Stop Loss</span>
+                        <span class="stop-loss-hint" id="stopLossHint"></span>
+                    </label>
+                    <div class="stop-loss-controls">
+                        <input type="number" class="input-field stop-loss-input" id="stopLossInput" 
+                               placeholder="Enter stop price" min="0" step="0.01">
+                        <button class="stop-loss-btn" id="setStopLossBtn">Set Stop</button>
+                        <button class="stop-loss-btn clear" id="clearStopLossBtn" style="display: none;">Clear</button>
+                    </div>
+                    <div class="stop-loss-info" id="stopLossInfo" style="display: none;"></div>
+                </div>
+                
+                <!-- Take Profit Section -->
+                <div class="take-profit-section">
+                    <div class="section-divider"></div>
+                    <label class="input-label">
+                        <span>🎯 Take Profit</span>
+                        <span class="take-profit-hint" id="takeProfitHint"></span>
+                    </label>
+                    <div class="take-profit-controls">
+                        <input type="number" class="input-field take-profit-input" id="takeProfitInput" 
+                               placeholder="Enter target price" min="0" step="0.01">
+                        <button class="take-profit-btn" id="setTakeProfitBtn">Set Target</button>
+                        <button class="take-profit-btn clear" id="clearTakeProfitBtn" style="display: none;">Clear</button>
+                    </div>
+                    <div class="take-profit-info" id="takeProfitInfo" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="section-title">Holdings</h3>
+                <div class="holdings-list" id="holdingsList">
+                    <div style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 20px;">
+                        No holdings yet
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <script src="js/app.js"></script>
+</body>
+</html>

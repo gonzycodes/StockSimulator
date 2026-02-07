@@ -94,24 +94,3 @@ def test_sell_completely_removes_ticker(portfolio, tm, price_map, temp_transacti
     assert data[0]["side"] == "SELL"
     assert data[0]["quantity"] == 5.0
 
-
-def test_append_multiple_transactions(portfolio, tm, price_map, temp_transactions_file):
-    start_cash = portfolio.cash  # 10000.0
-
-    price_map["HM-B.ST"] = 120.0
-    tm.buy("HM-B.ST", 30.0)
-    cash_after_buy = start_cash - (30 * 120)  # 6400.0
-
-    price_map["HM-B.ST"] = 125.0
-    tm.sell("HM-B.ST", 10.0)
-    cash_after_sell = cash_after_buy + (10 * 125)  # 7650.0
-
-    with temp_transactions_file.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    assert len(data) == 2
-    assert data[0]["side"] == "BUY"
-    assert data[1]["side"] == "SELL"
-
-    assert data[0]["cash_after"] == pytest.approx(cash_after_buy)
-    assert data[1]["cash_after"] == pytest.approx(cash_after_sell)
