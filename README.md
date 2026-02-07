@@ -72,6 +72,7 @@
 
 ## About The Project
 
+
 [![Product Name Screen Shot][product-screenshot]](https://example.com)
 
 StockSimulator is a Python-based trading simulator where users receive a virtual budget (e.g., 100,000 SEK) and can buy/sell stocks or cryptocurrencies using real market data. The project is designed to demonstrate object-oriented programming, API integration, data analysis, and visualization.
@@ -92,6 +93,12 @@ This is an example of how you may give instructions on setting up your project l
 To get a local copy up and running follow these simple example steps.
 
 ### Installation
+
+### Prerequisites
+
+- Python 3.12.12
+  The project is developed and tested using Python 3.12.12.
+
 
 1. **Clone the Repo**
 
@@ -246,6 +253,12 @@ pytest -v
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+```md
+## Verification
+
+The installation and run instructions have been tested on a fresh installation
+using a clean virtual environment.
 
 <!-- ERROR HANDLING -->
 
