@@ -209,8 +209,6 @@ Optional log level:
 python -m src.main --log-level DEBUG quote AAPL
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Portfolio command
 
 Show current portfolio status including cash, holdings, and total value.
@@ -221,8 +219,6 @@ python -m src.cli portfolio
 
 <!-- ANALYTICS -->
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Analytics (Profit & Loss)
 
 The analytics module calculates Profit/Loss (P/L) using a simple **average cost model**.
@@ -231,6 +227,7 @@ The analytics module calculates Profit/Loss (P/L) using a simple **average cost 
 - **Unrealized P/L**: (latest price − average cost) × remaining quantity  
 - **Total P/L**: realized + unrealized  
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- TESTS -->
 
@@ -252,13 +249,12 @@ or with more detailed output:
 pytest -v
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-```md
-## Verification
+### Verification
 
 The installation and run instructions have been tested on a fresh installation
 using a clean virtual environment.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ERROR HANDLING -->
 
@@ -292,6 +288,8 @@ Example:
   }
 ]
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Snapshots
 After each successful trade (buy/sell), a snapshot is appended to `data/snapshots.csv`.
