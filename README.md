@@ -87,6 +87,47 @@ This section should list any major frameworks/libraries used to bootstrap your p
 
 <!-- GETTING STARTED -->
 
+## Project Structure
+
+```bash
+StockSimulator/
+├── data/                           # Local runtime data + optional helper modules
+│   └── yfinance_fetcher.py         # Legacy/alt Yahoo Finance fetch helper (used in tests)
+│
+├── src/                            # Application source code
+│   ├── main.py                     # Entry point: menu + safe interactive loop + routes args to CLI
+│   ├── cli.py                      # Argparse CLI commands (quote/sell) + portfolio JSON IO helpers
+│   ├── validators.py               # Central input validation logic (tickers/amounts)
+│   ├── data_fetcher.py             # Market data layer (yfinance) + Quote model + QuoteFetchError codes
+│   ├── portfolio.py                # Portfolio domain model (cash/holdings + buy/sell + total_value)
+│   ├── transaction_manager.py      # TransactionManager + domain exceptions + Transaction result model
+│   ├── errors.py                   # Controlled app error types (ValidationError/FileError/DataFetchError)
+│   ├── logger.py                   # Central logging setup (console + rotating file) + env initializer
+│   └── config.py                   # Centralized paths (PROJECT_ROOT/DATA_DIR/SRC_DIR/TESTS_DIR)
+│
+├── tests/                          # Automated tests (pytest)
+│   ├── conftest.py                 # Pytest config: adds repo root to sys.path for `from src...`
+│   ├── test_logger.py              # Tests logging init + idempotency + log file creation
+│   ├── test_portfolio.py           # Tests Portfolio behaviors (cash/holdings operations)
+│   ├── test_transaction_manager.py # Tests TransactionManager + domain validation/exceptions
+│   ├── test_market_data.py         # Tests yfinance fetching + fetch_latest_quote error codes
+│   └── test_cli_quote.py           # CLI quote command tests (output/behavior)
+│
+├── requirements.txt                # Python dependencies (pip install -r requirements.txt)
+└── README.md                       # Project documentation
+```
+## Core Classes
+
+- **Portfolio** (src/portfolio.py)  
+  Represents the portfolio state including cash balance and holdings.
+
+- **TransactionManager** (src/transaction_manager.py)  
+  Handles buy and sell operations, validation, and transaction side effects.
+
+- **SnapshotStore** (src/snapshot_store.py)  
+  Persists portfolio snapshots after each trade.
+
+
 ## Getting Started
 
 This is an example of how you may give instructions on setting up your project locally.
@@ -248,6 +289,11 @@ or with more detailed output:
 ```bash
 pytest -v
 ```
+run a specific file:
+
+```bash
+pytest tests/test_transaction_manager.py
+```
 
 ### Verification
 
@@ -294,6 +340,25 @@ Example:
 ## Snapshots
 After each successful trade (buy/sell), a snapshot is appended to `data/snapshots.csv`.
 
+## Continuous Integration (GitHub Actions)
+
+This project uses GitHub Actions for Continuous Integration.
+
+On every push and pull request, an automated pipeline is executed that:
+
+- sets up Python
+- installs dependencies from requirements.txt
+- runs the full pytest test suite
+
+A pull request can only be merged when the CI pipeline passes successfully.
+
+The workflow definition can be found here:
+
+.github/workflows/python-tests.yml
+
+This ensures that the project remains stable and that all tests pass before changes are merged.
+
+
 
 <!-- ROADMAP -->
 
@@ -302,6 +367,42 @@ After each successful trade (buy/sell), a snapshot is appended to `data/snapshot
 TBA
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- WHO DID WHAT -->
+## Who did what
+
+Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request history.
+
+**Nahuel**
+
+- TR-204: Cache and mock data fallback when market API fails  
+  Modules: src/data_fetcher.py, src/config.py, data/mock_prices.json, related tests
+
+- TR-242: Portfolio snapshots saved after each trade  
+  Modules: src/snapshot_store.py, integration with TransactionManager, snapshot CSV persistence
+
+- TR-253: Pytest JSON save and load roundtrip for portfolio persistence  
+  Modules: portfolio save/load logic, tests using tmp_path
+
+- TR-234: CLI command `portfolio` showing cash, holdings, and total value  
+  Modules: src/cli.py, portfolio formatting and total value calculation
+
+- TR-212: Core Portfolio class (cash, holdings, total_value)  
+  Modules: src/portfolio.py
+
+- TR-251: Pytest coverage for buy behavior (cash decreases, holdings increase)  
+  Modules: tests/test_transaction_manager.py
+
+- TR-263: README test instructions and CI/CD documentation  
+  Documentation: README sections for pytest usage and GitHub Actions CI pipeline
+
+**Nicklas**
+
+**David**
+
+**Anton**
+
+**Alex**
 
 <!-- CONTRIBUTING -->
 
@@ -356,34 +457,5 @@ Use this space to list resources you find helpful and would like to give credit 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-## Map Structure
-
-```bash
-StockSimulator/
-├── data/                           # Local runtime data + optional helper modules
-│   └── yfinance_fetcher.py         # Legacy/alt Yahoo Finance fetch helper (used in tests)
-│
-├── src/                            # Application source code
-│   ├── main.py                     # Entry point: menu + safe interactive loop + routes args to CLI
-│   ├── cli.py                      # Argparse CLI commands (quote/sell) + portfolio JSON IO helpers
-│   ├── validators.py               # Central input validation logic (tickers/amounts)
-│   ├── data_fetcher.py             # Market data layer (yfinance) + Quote model + QuoteFetchError codes
-│   ├── portfolio.py                # Portfolio domain model (cash/holdings + buy/sell + total_value)
-│   ├── transaction_manager.py      # TransactionManager + domain exceptions + Transaction result model
-│   ├── errors.py                   # Controlled app error types (ValidationError/FileError/DataFetchError)
-│   ├── logger.py                   # Central logging setup (console + rotating file) + env initializer
-│   └── config.py                   # Centralized paths (PROJECT_ROOT/DATA_DIR/SRC_DIR/TESTS_DIR)
-│
-├── tests/                          # Automated tests (pytest)
-│   ├── conftest.py                 # Pytest config: adds repo root to sys.path for `from src...`
-│   ├── test_logger.py              # Tests logging init + idempotency + log file creation
-│   ├── test_portfolio.py           # Tests Portfolio behaviors (cash/holdings operations)
-│   ├── test_transaction_manager.py # Tests TransactionManager + domain validation/exceptions
-│   ├── test_market_data.py         # Tests yfinance fetching + fetch_latest_quote error codes
-│   └── test_cli_quote.py           # CLI quote command tests (output/behavior)
-│
-├── requirements.txt                # Python dependencies (pip install -r requirements.txt)
-└── README.md                       # Project documentation
-```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
