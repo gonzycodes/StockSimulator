@@ -403,7 +403,39 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 **Anton**
 
 **Alex**
+- TR-102 venv + requirements.txt (yfinance,  pytest)
+  README.md, requirements.txt
+  
+- TR-201 Data Fetcher: fetch current price for ticker via yfinance
+  data/ __init__.py, yfinance_fetcher.py
+  tests/ test_market_data.py
+  pytest.ini
+  
+- TR-202 Data Fetcher: handle errors (invalid ticker, network error) + clear error messages
+  src/data_fetcher.py
+  tests/test_market_data.py
 
+- TR-203 Exchange times (datetime): Blocks if the market is closed (different depending on the market)
+  src/data_fetcher.py
+  tests/test_transaction_manager.py
+  
+- TR-222 Robust loading of portfolio from JSON + autosave after every buy/sell
+  src/portfolio.py
+  tests/test_transaction_manager
+  
+- TR-223 Added transactions logging with failsafe
+  src/models/transaction.py
+  src/cli.py, transaction_logger.py, transaction_manager.py
+  tests/test_portfolio.py, test_transaction_logger.py, test_transaction_manager.py
+
+- TR-243 TradingView Charts: Real-time visualization of portfolio with interactive chart graph
+  css/styles.css
+  js/app.js
+  tests/stock_sim_chart.py, test_transaction_logger.py, test_transaction_manager.py
+  api_server.py
+  index.html
+
+    
 <!-- CONTRIBUTING -->
 
 ## Contributing
