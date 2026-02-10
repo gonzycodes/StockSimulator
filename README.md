@@ -135,11 +135,6 @@ To get a local copy up and running follow these simple example steps.
 
 ### Installation
 
-### Prerequisites
-
-- Python 3.12.12
-  The project is developed and tested using Python 3.12.12.
-
 
 1. **Clone the Repo**
 
@@ -172,6 +167,13 @@ To get a local copy up and running follow these simple example steps.
 
 ### Common commands
 
+Run the web based mode with graph
+```bash
+start index.html
+python api_server.py
+```
+
+
 Run the app (menu):
 
 ```bash
@@ -198,10 +200,11 @@ pytest -q
 
 ## Usage
 
-The app can run in two modes:
+The app can run in three modes:
 
 1. Interactive mode (menu + safe REPL loop)
 2. CLI mode (single command via argparse)
+3. Web based mode with graph
 
 ### Interactive mode (recommended)
 
@@ -486,8 +489,5 @@ Use this space to list resources you find helpful and would like to give credit 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
