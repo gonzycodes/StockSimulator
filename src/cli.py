@@ -428,12 +428,5 @@ def main(argv: list[str] | None = None) -> int:
         log.info("CLI exit")
 
 
-def run_cli(argv: list[str]) -> int:
-    """
-    Backward-compatible alias for older dev CLI entrypoint.
-    """
-    return main(argv)
-
-
 if __name__ == "__main__":
     sys.exit(main())
