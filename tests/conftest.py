@@ -14,6 +14,16 @@ import shutil
 import tempfile
 from pathlib import Path
 
+# --- Silence app logging during pytest --------------------------------------
+
+# Flag so the application knows it is running under tests
+os.environ.setdefault("STOCKSIM_TESTING", "1")
+
+# Disable default file logging (logs/app.log) during tests
+# (individual tests can still pass log_file explicitly)
+os.environ.setdefault("LOG_FILE", "")
+
+
 # --- Redirect data I/O during tests -----------------------------------------
 
 DATA_DIR_ENV = "STOCKSIM_DATA_DIR"
