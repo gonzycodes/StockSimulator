@@ -77,9 +77,16 @@ def test_cli_buy_offline_returns_0(cli, monkeypatch, capsys):
             self.portfolio = portfolio
 
         def buy(self, ticker: str, quantity: float):
-            self.portfolio.holdings[ticker] = self.portfolio.holdings.get(ticker, 0.0) + quantity
+            self.portfolio.holdings[ticker] = (
+                self.portfolio.holdings.get(ticker, 0.0) + quantity
+            )
             self.portfolio.cash -= 100.0 * quantity
-            return SimpleNamespace(ticker=ticker, quantity=quantity, price=100.0, gross_amount=100.0 * quantity)
+            return SimpleNamespace(
+                ticker=ticker,
+                quantity=quantity,
+                price=100.0,
+                gross_amount=100.0 * quantity,
+            )
 
     monkeypatch.setattr(cli, "TransactionManager", FakeTM)
 

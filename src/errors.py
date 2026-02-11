@@ -16,4 +16,3 @@ class ValidationError(ValueError):
 
 class FileError(RuntimeError):
     """Raised when reading/writing local files fails."""
-

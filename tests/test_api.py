@@ -146,8 +146,10 @@ class TestTradeEndpoint:
 
         assert response.status_code == 400
 
+
 # vulture: pytest fixture is used via dependency injection / usefixtures marker
 _ = clean_portfolio
+
 
 class TestMarketsEndpoint:
     def test_get_markets(self, client):
