@@ -104,7 +104,7 @@ def test_portfolio_save_handles_write_error(monkeypatch, tmp_path: Path, capsys)
 
     out_file = tmp_path / "portfolio.json"
 
-    def _boom(*args, **kwargs):
+    def _boom(*args, **_kwargs):
         raise PermissionError("nope")
 
     monkeypatch.setattr(Path, "write_text", _boom)
