@@ -104,7 +104,7 @@ def test_report_includes_recent_trades_and_pl(
     def fake_load_transactions_df(_: Path) -> object:
         return object()
 
-    def fake_compute_pl(*, df, latest_prices, **kwargs):
+    def fake_compute_pl(*, df, latest_prices, **_kwargs):
         assert df is not None
         assert latest_prices["AAPL"] == 120.0
         assert latest_prices["MSFT"] == 60.0
