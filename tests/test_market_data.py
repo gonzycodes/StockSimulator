@@ -37,6 +37,7 @@ def test_get_latest_price_success(mock_ticker):
 @patch("data.yfinance_fetcher.yf.Ticker")
 def test_get_latest_price_network_error(mock_ticker):
     mock_ticker.side_effect = Exception("Connection timeout")
+    _ = mock_ticker.side_effect  # used by unittest.mock (silence vulture)
 
     with pytest.raises(Exception, match="Connection timeout"):
         get_latest_price("MSFT")
@@ -68,6 +69,7 @@ def test_fetch_latest_quote_not_found(mock_ticker):
 @patch("src.data_fetcher.yf.Ticker")
 def test_fetch_latest_quote_network_error(mock_ticker):
     mock_ticker.side_effect = Exception("Connection timeout")
+    _ = mock_ticker.side_effect  # used by unittest.mock (silence vulture)
 
     from src.data_fetcher import fetch_latest_quote, QuoteFetchError, FetchErrorCode
 
