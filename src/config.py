@@ -2,8 +2,8 @@
 Configuration module for StockSimulator
 Centralizes the path definitions using pathlib to ensure cross platform compatibility.
 """
+
 import os
-from datetime import datetime, time
 from pathlib import Path
 
 #   Base directory of the project
@@ -14,7 +14,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Define standard paths
 _env_data_dir = os.getenv("STOCKSIM_DATA_DIR")
-DATA_DIR = (Path(_env_data_dir).expanduser() if _env_data_dir else (PROJECT_ROOT / "data")).resolve()
+DATA_DIR = (
+    Path(_env_data_dir).expanduser() if _env_data_dir else (PROJECT_ROOT / "data")
+).resolve()
 SRC_DIR = PROJECT_ROOT / "src"
 TESTS_DIR = PROJECT_ROOT / "tests"
 SNAPSHOTS_FILE = DATA_DIR / "snapshots.csv"

@@ -1,6 +1,7 @@
 from src.portfolio import Portfolio
 from src.formatters import format_portfolio_output
 
+
 def test_empty_portfolio_shows_no_holdings_and_cash():
     p = Portfolio(cash=1000.0)
     out = format_portfolio_output(p, price_map={})

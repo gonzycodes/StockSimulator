@@ -36,9 +36,11 @@ def temp_transactions_file(tmp_path, monkeypatch):
     return fake_file
 
 
-def test_buy_appends_to_transaction_history(portfolio, tm, price_map, temp_transactions_file):
+def test_buy_appends_to_transaction_history(
+    portfolio, tm, price_map, temp_transactions_file
+):
     price_map["AAPL"] = 150.0
-    tx = tm.buy("AAPL", 10.0)
+    tm.buy("AAPL", 10.0)
 
     assert portfolio.cash == pytest.approx(8500.0)
     assert portfolio.holdings["AAPL"] == pytest.approx(10.0)
@@ -56,11 +58,13 @@ def test_buy_appends_to_transaction_history(portfolio, tm, price_map, temp_trans
     assert data[0]["cash_after"] == pytest.approx(8500.0)
 
 
-def test_sell_appends_to_transaction_history(portfolio, tm, price_map, temp_transactions_file):
+def test_sell_appends_to_transaction_history(
+    portfolio, tm, price_map, temp_transactions_file
+):
     portfolio.holdings["AAPL"] = 15.0
 
     price_map["AAPL"] = 160.0
-    tx = tm.sell("AAPL", 6.0)
+    tm.sell("AAPL", 6.0)
 
     assert portfolio.cash == pytest.approx(10960.0)
     assert portfolio.holdings["AAPL"] == pytest.approx(9.0)
@@ -78,7 +82,9 @@ def test_sell_appends_to_transaction_history(portfolio, tm, price_map, temp_tran
     assert data[0]["cash_after"] == pytest.approx(10960.0)
 
 
-def test_sell_completely_removes_ticker(portfolio, tm, price_map, temp_transactions_file):
+def test_sell_completely_removes_ticker(
+    portfolio, tm, price_map, temp_transactions_file
+):
     portfolio.holdings["TSLA"] = 5.0
 
     price_map["TSLA"] = 200.0
@@ -93,4 +99,3 @@ def test_sell_completely_removes_ticker(portfolio, tm, price_map, temp_transacti
     assert len(data) == 1
     assert data[0]["side"] == "SELL"
     assert data[0]["quantity"] == 5.0
-

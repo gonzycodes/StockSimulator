@@ -10,7 +10,10 @@ log = get_logger(__name__)
 def log_transaction(tx: Transaction) -> bool:
     """Logs a completed transaction to the JSON history (append)."""
     record = {
-        "timestamp": (tx.timestamp or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")),
+        "timestamp": (
+            tx.timestamp
+            or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        ),
         "side": tx.kind.upper(),
         "ticker": tx.ticker,
         "quantity": tx.quantity,

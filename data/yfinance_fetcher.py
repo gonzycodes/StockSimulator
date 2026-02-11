@@ -28,15 +28,19 @@ def _extract_price_and_time(info: dict) -> tuple[float, str]:
 
     # Basic validation – fail fast with clear error messages
     if price is None:
-        raise ValueError("No price found in yfinance response (missing 'currentPrice' and 'regularMarketPrice')")
-    
+        raise ValueError(
+            "No price found in yfinance response (missing 'currentPrice' and 'regularMarketPrice')"
+        )
+
     if ts_unix is None:
         raise ValueError("No timestamp found in)")
 
     try:
         # Convert Unix timestamp → human-readable string in local time
         # Format: 2025-12-31 23:59:59
-        ts_str = datetime.fromtimestamp(ts_unix, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        ts_str = datetime.fromtimestamp(ts_unix, tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         return float(price), ts_str
     except (TypeError, ValueError) as e:
         # Protect against corrupt or unexpected timestamp values
@@ -68,7 +72,7 @@ def get_latest_price(ticker: str) -> tuple[float, str]:
     try:
         # Create yfinance Ticker object and fetch latest market data
         stock = yf.Ticker(ticker)
-        
+
         # This is the actual network I/O call – fetches all available info
         info = stock.info
 
