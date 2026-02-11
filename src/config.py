@@ -22,7 +22,6 @@ TESTS_DIR = PROJECT_ROOT / "tests"
 SNAPSHOTS_FILE = DATA_DIR / "snapshots.csv"
 TRANSACTIONS_FILE = DATA_DIR / "transactions.json"
 MOCK_PRICES_FILE = DATA_DIR / "mock_prices.json"
-USE_MOCK_DATA = False  # Set to true for demo/offline mode
 
 # Ensure directories exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
