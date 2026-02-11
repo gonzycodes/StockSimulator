@@ -433,7 +433,23 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 **David**
 
 **Anton**
-
+- TR-235 CLI: “save/load” (save/load portfolio)
+  Implemented manual persistence commands save and load in the CLI to allow users to snapshot or restore their session state. Updated argument parser. `src/cli.py`, `README.md`
+- TR-254 Pytest: test input validation (invalid quantity/ticker)
+  Created comprehensive unit tests for validate_ticker (normalization) and validate_positive_float (numeric checks) to ensure robust error handling. `tests/test_validators.py`
+- TR-232 CLI: command “buy <TICKER> <QUANTITY>”
+  Implemented buy command logic with balance checks and autosave functionality. Resolved merge conflicts between local feature branch and dev. `src/cli.py`, `src/portfolio.py`, `README.md`
+- TR-214 Input validation: central validator (e.g. amount > 0, integer/float, ticker format)
+  Implemented centralized validation logic to handle ticker normalization (stripping/uppercasing) and numeric constraints (positive floats). `src/validators.py`
+- TR-233 CLI: command “sell <TICKER> <QUANTITY>”
+  Implemented sell command logic, ensuring users own the asset and have sufficient quantity before executing the trade. `src/cli.py`, `src/portfolio.py`
+- TR-105 Minimal CLI loop: start/exit + menu skeleton
+  Set up the main application entry point using argparse to dispatch commands and handle the primary execution loop. `src/main.py`, `src/cli.py`
+- TR-103 Base config: `config.py` + pathlib for paths
+  Established centralized configuration for file paths (like DATA_DIR) using pathlib to ensure cross-platform compatibility. `src/config.py`
+- TR-211 Class: Asset/Stock (ticker, name, last_price, updated_at)
+  Implemented core domain Asset dataclass with built-in validation and serialization methods (to_dict/from_dict) to structure market data. `src/assets.py`, `tests/test_assets.py`
+  
 **Alex**
 - TR-102 venv + requirements.txt (yfinance,  pytest)
   README.md, requirements.txt
