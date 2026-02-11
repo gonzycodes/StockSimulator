@@ -372,7 +372,7 @@ TBA
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- WHO DID WHAT -->
-## Who did what
+## Contributions (Who did what)
 
 Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request history.
 
@@ -380,26 +380,27 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 
 - TR-204: Cache and mock data fallback when market API fails  
   Modules: src/data_fetcher.py, src/config.py, data/mock_prices.json, related tests
-
 - TR-242: Portfolio snapshots saved after each trade  
   Modules: src/snapshot_store.py, integration with TransactionManager, snapshot CSV persistence
-
 - TR-253: Pytest JSON save and load roundtrip for portfolio persistence  
   Modules: portfolio save/load logic, tests using tmp_path
-
 - TR-234: CLI command `portfolio` showing cash, holdings, and total value  
   Modules: src/cli.py, portfolio formatting and total value calculation
-
 - TR-212: Core Portfolio class (cash, holdings, total_value)  
   Modules: src/portfolio.py
-
 - TR-251: Pytest coverage for buy behavior (cash decreases, holdings increase)  
   Modules: tests/test_transaction_manager.py
-
 - TR-263: README test instructions and CI/CD documentation  
   Documentation: README sections for pytest usage and GitHub Actions CI pipeline
 
-**Nicklas**
+**Nicklas (Scrum Master)**
+- `src/transactions.py` — `TransactionManager` (buy/sell flow) *(TR-213, PR #29)*
+- `src/cli.py` — robust error handling + `quote <TICKER>` *(TR-236, TR-231)*
+- `src/portfolio.py` — save portfolio to JSON *(TR-221)*
+- `src/reporting.py` — “today’s trading” report (summary, trades, P/L) *(TR-244)*
+- `src/logger.py` — logging setup (console + file, trade logging) *(TR-104)*
+- `tests/` — test: cannot sell more than holdings *(TR-252)*
+- Fixes: timezone-aware UTC timestamps *(PR #28)*; prevent pytest writing to repo `data/` *(PR #37)*
 
 **David**
 
@@ -408,29 +409,23 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 **Alex**
 - TR-102 venv + requirements.txt (yfinance,  pytest)
   README.md, requirements.txt
-  
-- TR-201 Data Fetcher: fetch current price for ticker via yfinance
+  - TR-201 Data Fetcher: fetch current price for ticker via yfinance
   data/ __init__.py, yfinance_fetcher.py
   tests/ test_market_data.py
   pytest.ini
-  
-- TR-202 Data Fetcher: handle errors (invalid ticker, network error) + clear error messages
+  - TR-202 Data Fetcher: handle errors (invalid ticker, network error) + clear error messages
   src/data_fetcher.py
   tests/test_market_data.py
-
 - TR-203 Exchange times (datetime): Blocks if the market is closed (different depending on the market)
   src/data_fetcher.py
   tests/test_transaction_manager.py
-  
-- TR-222 Robust loading of portfolio from JSON + autosave after every buy/sell
+  - TR-222 Robust loading of portfolio from JSON + autosave after every buy/sell
   src/portfolio.py
   tests/test_transaction_manager
-  
-- TR-223 Added transactions logging with failsafe
+  - TR-223 Added transactions logging with failsafe
   src/models/transaction.py
   src/cli.py, transaction_logger.py, transaction_manager.py
   tests/test_portfolio.py, test_transaction_logger.py, test_transaction_manager.py
-
 - TR-243 TradingView Charts: Real-time visualization of portfolio with interactive chart graph
   css/styles.css
   js/app.js
