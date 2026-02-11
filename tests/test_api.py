@@ -106,8 +106,9 @@ class TestHistoricalEndpoint:
             assert candle["low"] <= candle["close"]
 
 
+@pytest.mark.usefixtures("clean_portfolio")
 class TestTradeEndpoint:
-    def test_buy_crypto(self, client, clean_portfolio):
+    def test_buy_crypto(self, client):
         """Test buying crypto (24/7 market)."""
         trade_data = {
             "action": "buy",
@@ -122,7 +123,7 @@ class TestTradeEndpoint:
         # May succeed or fail based on market conditions
         assert response.status_code in [200, 400]
 
-    def test_sell_without_holdings(self, client, clean_portfolio):
+    def test_sell_without_holdings(self, client):
         trade_data = {
             "action": "sell",
             "ticker": "AAPL",
@@ -145,6 +146,8 @@ class TestTradeEndpoint:
 
         assert response.status_code == 400
 
+# vulture: pytest fixture is used via dependency injection / usefixtures marker
+_ = clean_portfolio
 
 class TestMarketsEndpoint:
     def test_get_markets(self, client):
