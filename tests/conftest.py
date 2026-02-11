@@ -27,7 +27,12 @@ if DATA_DIR_ENV not in os.environ:
     os.environ[DATA_DIR_ENV] = str(_temp_data_dir)
 
 
-def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
+def pytest_sessionfinish(session, exitstatus):
     """Cleanup temp data directory created for this pytest session."""
+    _ = (session, exitstatus)
     if _created_temp_data_dir and _temp_data_dir:
         shutil.rmtree(_temp_data_dir, ignore_errors=True)
+
+
+# vulture: pytest hooks are discovered by name, not by direct calls
+_ = pytest_sessionfinish
