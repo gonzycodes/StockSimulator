@@ -31,10 +31,12 @@ def test_two_trades_write_two_snapshots(tmp_path):
         snapshot_store=store,
     )
 
-    tm.buy("AAPL", 2)     # cash -> 800, holdings_value -> 2*100=200, total -> 1000
+    tm.buy("AAPL", 2)  # cash -> 800, holdings_value -> 2*100=200, total -> 1000
 
     prices["AAPL"] = 110.0
-    tm.sell("AAPL", 1)    # cash -> 910, remaining=1, holdings_value -> 1*110=110, total -> 1020
+    tm.sell(
+        "AAPL", 1
+    )  # cash -> 910, remaining=1, holdings_value -> 1*110=110, total -> 1020
 
     with path.open("r", encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))

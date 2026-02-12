@@ -42,7 +42,7 @@ except Exception:  # pragma: no cover
     load_transactions_df = None  # type: ignore
 
 
-log = (get_logger(__name__) if callable(get_logger) else logging.getLogger(__name__))
+log = get_logger(__name__) if callable(get_logger) else logging.getLogger(__name__)
 
 Clock = Callable[[], datetime]
 PriceProvider = Callable[[str], float]
@@ -51,6 +51,7 @@ PriceProvider = Callable[[str], float]
 @dataclass(frozen=True)
 class TradeLine:
     """Minimal representation for rendering recent trades."""
+
     timestamp: str
     side: str
     ticker: str
@@ -63,6 +64,7 @@ class TradeLine:
 @dataclass(frozen=True)
 class ReportData:
     """All values needed to render a report."""
+
     generated_at: str
     period_label: str
     period_start: str | None
@@ -91,7 +93,9 @@ def _default_clock() -> datetime:
 def _default_price_provider(ticker: str) -> float:
     """Fetch a latest price using src.data_fetcher (best effort)."""
     if fetch_latest_quote is None:  # pragma: no cover
-        raise RuntimeError("Default price provider is unavailable (data_fetcher import failed).")
+        raise RuntimeError(
+            "Default price provider is unavailable (data_fetcher import failed)."
+        )
     quote = fetch_latest_quote(ticker)
     return float(quote.price)
 
@@ -162,7 +166,9 @@ def _to_trade_line(record: Mapping[str, Any]) -> TradeLine | None:
         return None
 
 
-def _extract_period_from_trade_lines(trades: list[TradeLine]) -> tuple[str | None, str | None]:
+def _extract_period_from_trade_lines(
+    trades: list[TradeLine],
+) -> tuple[str | None, str | None]:
     """Get (start,end) ISO timestamps from trade timestamps (best effort)."""
     dts = [_parse_iso_ts(t.timestamp) for t in trades]
     dts = [d for d in dts if d is not None]
@@ -226,13 +232,17 @@ def build_report_data(
 
     if callable(compute_pl) and callable(load_transactions_df):
         try:
-            df = load_transactions_df(tx_path)  # analytics handles missing/invalid safely
+            df = load_transactions_df(
+                tx_path
+            )  # analytics handles missing/invalid safely
             pl = compute_pl(df=df, latest_prices=prices)
             realized_pl = float(pl.get("realized_pl", 0.0))
             unrealized_pl = float(pl.get("unrealized_pl", 0.0))
             total_pl = float(pl.get("total_pl", realized_pl + unrealized_pl))
         except Exception:
-            log.warning("Analytics compute_pl failed; defaulting P/L to 0.", exc_info=True)
+            log.warning(
+                "Analytics compute_pl failed; defaulting P/L to 0.", exc_info=True
+            )
             notes.append("P/L unavailable (analytics failed); showing 0.00.")
             realized_pl = unrealized_pl = total_pl = 0.0
     else:
@@ -355,4 +365,3 @@ def generate_and_write_report(
     )
     text = render_report(data)
     return write_report_text(text=text, clock=clock)
-

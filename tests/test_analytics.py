@@ -33,7 +33,6 @@ def test_compute_pl_average_cost_realized_and_unrealized():
         ]
     )
 
-
     out = compute_pl(df, latest_prices={"AAPL": 115.0})
 
     # Core P/L results
@@ -41,7 +40,6 @@ def test_compute_pl_average_cost_realized_and_unrealized():
     assert out["realized_pl"] == 75.0
     assert out["unrealized_pl"] == 150.0
     assert out["total_pl"] == 225.0
-
 
     # Check per-ticker details
     aapl = out["per_ticker"]["AAPL"]

@@ -14,8 +14,8 @@ from src.data_fetcher import Quote
 
 def test_validate_ticker_trims_and_uppercases() -> None:
     assert validate_ticker("  aapl ") == "AAPL"
-    
-    
+
+
 def test_cmd_quote_outputs_currency_and_sek(monkeypatch, capsys) -> None:
     def fake_fetch_latest_quote(ticker: str) -> Quote:
         return Quote(
@@ -40,5 +40,3 @@ def test_cmd_quote_outputs_currency_and_sek(monkeypatch, capsys) -> None:
     assert "123.40 USD" in out
     assert "1300.50 SEK" in out
     assert "Fetched at:" in out
-    
-    

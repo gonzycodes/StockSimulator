@@ -37,7 +37,7 @@ try:
     from src.logger import init_logging, get_logger
 
     log = get_logger(__name__)
-    
+
 except Exception:  # pragma: no cover
     # Fallback if src.logger is not available yet
     import logging
@@ -61,6 +61,7 @@ except Exception:  # pragma: no cover
 
 PORTFOLIO_FILE = DATA_DIR / "portfolio.json"
 
+
 def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
     """Load portfolio from disk. Returns a new portfolio if file not found."""
     if not path.exists():
@@ -75,7 +76,7 @@ def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
         p = Portfolio()
         p.cash = float(data.get("cash", 10000.0))
         p.holdings = dict(data.get("holdings", {}))
-        
+
         log.info("Loaded portfolio from %s", path)
         return p
 
@@ -83,9 +84,9 @@ def load_portfolio(path: Path = PORTFOLIO_FILE) -> Portfolio:
         # Log full detail for debugging, show friendly error via FileError
         log.warning("Failed to load portfolio file: %s", path, exc_info=True)
         print(f"Warning: Could not load portfolio ({exc}). Starting with default.")
-        return Portfolio() # Return empty instead of crashing
-    
-    
+        return Portfolio()  # Return empty instead of crashing
+
+
 def save_portfolio(portfolio: Portfolio, path: Path = PORTFOLIO_FILE) -> None:
     """Save the portfolio to disk as JSON."""
     try:
@@ -103,7 +104,9 @@ def build_parser() -> argparse.ArgumentParser:
     Create and return the CLI argument parser.
     """
     parser = argparse.ArgumentParser(prog="stock-sim")
-    parser.add_argument("--log-level", default="INFO", help="DEBUG|INFO|WARNING|ERROR|CRITICAL")
+    parser.add_argument(
+        "--log-level", default="INFO", help="DEBUG|INFO|WARNING|ERROR|CRITICAL"
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -113,17 +116,23 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("sell", help="Sell an asset from the portfolio.")
     s.add_argument("ticker", help="Ticker symbol to sell, e.g. AAPL")
     s.add_argument("quantity", type=float, help="Number of shares to sell")
-    
+
     b = sub.add_parser("buy", help="Buy an asset and add to the portfolio.")
     b.add_argument("ticker", help="Ticker symbol to buy, e.g. AAPL")
     b.add_argument("quantity", type=float, help="Number of shares to buy")
-    
-    p = sub.add_parser("portfolio", help="Show portfolio status (cash, holdings, total value).")
 
-    sub.add_parser("analytics", help="Show Profit/Loss (realized + unrealized) from transactions.")
-    
+    sub.add_parser(
+        "portfolio", help="Show portfolio status (cash, holdings, total value)."
+    )
+
+    sub.add_parser(
+        "analytics", help="Show Profit/Loss (realized + unrealized) from transactions."
+    )
+
     r = sub.add_parser("report", help="Generate a daily trade report to data.")
-    r.add_argument("--recent", type=int, default=5, help="Include last N trades (default: 5)")
+    r.add_argument(
+        "--recent", type=int, default=5, help="Include last N trades (default: 5)"
+    )
 
     sub.add_parser("save", help="Manually save the current portfolio to disk.")
     sub.add_parser("load", help="Manually reload the portfolio from disk.")
@@ -145,12 +154,14 @@ def cmd_quote(ticker_raw: str) -> int:
         local_ts = quote.timestamp.astimezone()
         ts_str = local_ts.strftime("%Y-%m-%d %H:%M:%S %Z")
 
-        name_part = f" ({quote.company_name})" if getattr(quote, "company_name", None) else ""
+        name_part = (
+            f" ({quote.company_name})" if getattr(quote, "company_name", None) else ""
+        )
         price_sek_val = getattr(quote, "price_sek", None)
-        
+
         if price_sek_val is not None:
             price_sek = f"{float(price_sek_val):.2f}"
-            
+
             fx_pair = getattr(quote, "fx_pair", None)
             fx_rate = getattr(quote, "fx_rate_to_sek", None)
             fx_part = ""
@@ -198,7 +209,9 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
         valid_quantity = validate_positive_float(str(quantity))
 
         portfolio = load_portfolio()
-        tm = TransactionManager(portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log)
+        tm = TransactionManager(
+            portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log
+        )
 
         tx = tm.buy(ticker, valid_quantity)
         save_portfolio(portfolio)
@@ -206,7 +219,7 @@ def cmd_buy(ticker_raw: str, quantity: float) -> int:
         print(f"SUCCESS: Bought {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
         print(f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
         return 0
-    
+
     except MarketClosedError as e:
         print(f"Trade blocked: {e}")
         log.warning("Buy blocked due to market state: %s", e)
@@ -238,13 +251,17 @@ def cmd_sell(ticker_raw: str, quantity: float) -> int:
         valid_quantity = validate_positive_float(str(quantity))
 
         portfolio = load_portfolio()
-        tm = TransactionManager(portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log)
+        tm = TransactionManager(
+            portfolio=portfolio, snapshot_store=SnapshotStore(), logger=log
+        )
 
         tx = tm.sell(ticker, valid_quantity)
         save_portfolio(portfolio)
 
         print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
-        print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}")
+        print(
+            f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {portfolio.cash:.2f}"
+        )
         return 0
 
     except MarketClosedError as e:
@@ -304,8 +321,8 @@ def cmd_analytics() -> int:
         log.exception("Unexpected error during analytics command")
         print(f"System error: {exc}", file=sys.stderr)
         return 1
-    
-    
+
+
 def cmd_report(recent: int = 5) -> int:
     """
     Execute the report command (TR-244).
@@ -342,7 +359,7 @@ def cmd_save() -> int:
     """Execute the save command (TR-235)."""
     try:
         portfolio = load_portfolio()
-        # In a real CLI loop, the portfolio object would be in memory. 
+        # In a real CLI loop, the portfolio object would be in memory.
         # Here we just prove we can save the current state to the default path.
         save_portfolio(portfolio)
         print(f"Saved portfolio to {PORTFOLIO_FILE}")
@@ -355,11 +372,12 @@ def cmd_save() -> int:
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
 
+
 def cmd_load() -> int:
     """Execute the load command (TR-235)."""
     try:
         # force reload from disk
-        portfolio = load_portfolio() 
+        portfolio = load_portfolio()
         print(f"Loaded portfolio from {PORTFOLIO_FILE}")
         print(f"Cash: {portfolio.cash:.2f} SEK")
         print(f"Holdings: {len(portfolio.holdings)} assets")
@@ -368,6 +386,7 @@ def cmd_load() -> int:
         log.exception("Unexpected error during load")
         print(f"System Error: {exc}", file=sys.stderr)
         return 1
+
 
 def main(argv: list[str] | None = None) -> int:
     """
@@ -381,39 +400,33 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "quote":
             return cmd_quote(args.ticker)
-        
+
         elif args.command == "sell":
             return cmd_sell(args.ticker, args.quantity)
-        
+
         elif args.command == "buy":
             return cmd_buy(args.ticker, args.quantity)
 
         elif args.command == "portfolio":
             return cmd_portfolio()
-        
+
         elif args.command == "analytics":
             return cmd_analytics()
-        
+
         elif args.command == "report":
             return cmd_report(args.recent)
-            
+
         elif args.command == "save":
             return cmd_save()
-            
+
         elif args.command == "load":
             return cmd_load()
-        
+
         print("Error: Unknown command.", file=sys.stderr)
         return 0
     finally:
         log.info("CLI exit")
 
-
-def run_cli(argv: list[str]) -> int:
-    """
-    Backward-compatible alias for older dev CLI entrypoint.
-    """
-    return main(argv)
 
 if __name__ == "__main__":
     sys.exit(main())

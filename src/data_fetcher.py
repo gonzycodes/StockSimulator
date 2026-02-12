@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 import yfinance as yf
 
-from src.config import MOCK_PRICES_FILE, USE_MOCK_DATA
+from src.config import MOCK_PRICES_FILE
 
 
 logger = logging.getLogger(__name__)
@@ -30,23 +30,27 @@ def get_market_state(ticker: str) -> str:
     try:
         yf_ticker = yf.Ticker(ticker)
         info = yf_ticker.info
-        state = info.get('marketState', 'UNKNOWN')
+        state = info.get("marketState", "UNKNOWN")
         return state
     except Exception:
         logger.warning("Could not fetch marketState for %s", ticker, exc_info=True)
-        return 'UNKNOWN'
+        return "UNKNOWN"
+
 
 def is_market_likely_open(ticker: str) -> bool:
     """
     Returns True if marketState indicates regular trading hours.
     """
-    state =get_market_state(ticker)
-    return state == 'REGULAR' 
+    state = get_market_state(ticker)
+    return state == "REGULAR"
+
+
 class FetchErrorCode(str, Enum):
     VALIDATION = "VALIDATION"
     NOT_FOUND = "NOT_FOUND"
     NETWORK = "NETWORK"
     UNKNOWN = "UNKNOWN"
+
 
 class QuoteFetchError(RuntimeError):
     """
@@ -57,19 +61,22 @@ class QuoteFetchError(RuntimeError):
         super().__init__(message)
         self.code = code
 
+
 def _validate_ticker(ticker: str) -> str:
-        if not ticker or not ticker.strip():
-            raise QuoteFetchError(
-                "Ticker must not be empty",
-                code=FetchErrorCode.VALIDATION,
-            )
-        return ticker.strip().upper()
+    if not ticker or not ticker.strip():
+        raise QuoteFetchError(
+            "Ticker must not be empty",
+            code=FetchErrorCode.VALIDATION,
+        )
+    return ticker.strip().upper()
+
 
 @dataclass(frozen=True)
 class Quote:
     """
     A minimal latest-quote representation.
     """
+
     ticker: str
     price: float
     currency: str
@@ -78,8 +85,8 @@ class Quote:
     price_sek: Optional[float] = None
     fx_pair: Optional[str] = None
     fx_rate_to_sek: Optional[float] = None
-    
-    
+
+
 def fetch_latest_quote(ticker: str) -> Quote:
     """
     Fetch the latest price for a ticker using yfinance.
@@ -87,13 +94,18 @@ def fetch_latest_quote(ticker: str) -> Quote:
     ticker = _validate_ticker(ticker)
 
     if not is_market_likely_open(ticker):
-        print("Warning: Market appears to be closed for this ticker - showing last known price")
-        logger.info("Market likely closed for ticker: %s (marketState: %s)",
-                    ticker, get_market_state(ticker))
+        print(
+            "Warning: Market appears to be closed for this ticker - showing last known price"
+        )
+        logger.info(
+            "Market likely closed for ticker: %s (marketState: %s)",
+            ticker,
+            get_market_state(ticker),
+        )
 
     try:
         yf_ticker = yf.Ticker(ticker)
-        
+
         price = _try_fast_info_price(yf_ticker)
         if price is None:
             price = _try_history_price(yf_ticker)
@@ -104,15 +116,15 @@ def fetch_latest_quote(ticker: str) -> Quote:
                 code=FetchErrorCode.NOT_FOUND,
             )
 
-        
         company_name = _try_company_name(yf_ticker)
         currency = _try_currency(yf_ticker) or "UNKNOWN"
-        
+
         ts = datetime.now(timezone.utc)
-        
+
         # Best-effort SEK conversion
-        price_sek, fx_pair, fx_rate = _try_convert_to_sek(price=float(price), currency=currency)
-        
+        price_sek, fx_pair, fx_rate = _try_convert_to_sek(
+            price=float(price), currency=currency
+        )
 
         return Quote(
             ticker=ticker,
@@ -124,8 +136,8 @@ def fetch_latest_quote(ticker: str) -> Quote:
             fx_pair=fx_pair,
             fx_rate_to_sek=fx_rate,
         )
-    
-    except QuoteFetchError as exc:
+
+    except QuoteFetchError:
         raise
 
     except Exception as exc:
@@ -134,7 +146,7 @@ def fetch_latest_quote(ticker: str) -> Quote:
             ticker,
             exc_info=True,
         )
-    
+
         # Try fallback if we have mock enabled or want to use it in case of network errors
         logger.warning("Network error...falling back to mock for %s", ticker)
         try:
@@ -147,9 +159,6 @@ def fetch_latest_quote(ticker: str) -> Quote:
             ) from exc
 
 
-
-    
-    
 def _try_currency(yf_ticker: yf.Ticker) -> Optional[str]:
     """
     Try to get the instrument currency (e.g. USD, SEK).
@@ -171,9 +180,11 @@ def _try_currency(yf_ticker: yf.Ticker) -> Optional[str]:
         return None
     except Exception:
         return None
-    
-    
-def _try_convert_to_sek(price: float, currency: str) -> tuple[Optional[float], Optional[str], Optional[float]]:
+
+
+def _try_convert_to_sek(
+    price: float, currency: str
+) -> tuple[Optional[float], Optional[str], Optional[float]]:
     """
     Convert a price in <currency> to SEK using Yahoo FX tickers (best effort).
     """
@@ -199,8 +210,8 @@ def _try_convert_to_sek(price: float, currency: str) -> tuple[Optional[float], O
         return price_sek, fx_pair, float(fx_rate)
     except Exception:
         return None, fx_pair, None
-    
-    
+
+
 def _try_company_name(yf_ticker: yf.Ticker) -> Optional[str]:
     """
     Try to resolve a human-friendly company name for the ticker.
@@ -224,7 +235,7 @@ def _try_company_name(yf_ticker: yf.Ticker) -> Optional[str]:
         return None
     except Exception:
         return None
-    
+
 
 def _try_fast_info_price(yf_ticker: yf.Ticker) -> Optional[float]:
     """
@@ -238,7 +249,7 @@ def _try_fast_info_price(yf_ticker: yf.Ticker) -> Optional[float]:
         return float(price) if price is not None else None
     except Exception:
         return None
-    
+
 
 def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
     """
@@ -252,7 +263,7 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
                 closes = closes.dropna()
                 if not closes.empty:
                     return float(closes.iloc[-1])
-                
+
         hist = yf_ticker.history(period="5d", interval="1d")
         if hist is not None and not hist.empty:
             closes = hist.get("Close")
@@ -260,10 +271,11 @@ def _try_history_price(yf_ticker: yf.Ticker) -> Optional[float]:
                 closes = closes.dropna()
                 if not closes.empty:
                     return float(closes.iloc[-1])
-                
+
         return None
     except Exception:
         return None
+
 
 def load_mock_prices(path: Path) -> dict:
     """
@@ -272,7 +284,7 @@ def load_mock_prices(path: Path) -> dict:
     """
     if not path.exists():
         raise FileNotFoundError(f"Mock prices file not found: {path}")
-    
+
     try:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
@@ -281,28 +293,29 @@ def load_mock_prices(path: Path) -> dict:
     except Exception as e:
         raise RuntimeError(f"Failed to load mock prices from {path}: {e}")
 
+
 def _quote_from_mock(ticker: str) -> Quote:
     """
     Fetch a quote from mock data file.
     """
     ticker = _validate_ticker(ticker)
-    
+
     try:
         if not MOCK_PRICES_FILE.exists():
             raise QuoteFetchError(
                 f"Mock prices file not found: {MOCK_PRICES_FILE}",
                 code=FetchErrorCode.NOT_FOUND,
             )
-        
-        with open(MOCK_PRICES_FILE, 'r') as f:
+
+        with open(MOCK_PRICES_FILE, "r") as f:
             mock_data = json.load(f)
-        
+
         if ticker not in mock_data:
             raise QuoteFetchError(
                 f"Ticker '{ticker}' not found in mock data",
                 code=FetchErrorCode.NOT_FOUND,
             )
-        
+
         quote_data = mock_data[ticker]
         return Quote(
             ticker=ticker,
@@ -321,5 +334,3 @@ def _quote_from_mock(ticker: str) -> Quote:
             f"Error reading mock data for '{ticker}'",
             code=FetchErrorCode.UNKNOWN,
         ) from exc
-    
-    

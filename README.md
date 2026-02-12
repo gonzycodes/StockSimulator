@@ -342,7 +342,7 @@ StockSimulator/
 │   ├── cli.py                        # Argparse CLI commands (quote/sell) + portfolio JSON IO helpers
 │   ├── config.py                     # Centralized paths (PROJECT_ROOT/DATA_DIR/SRC_DIR/TESTS_DIR)
 │   ├── data_fetcher.py               # Market data layer (yfinance) + Quote model + QuoteFetchError codes
-│   ├── errors.py                     # Controlled app error types (ValidationError/FileError/DataFetchError)
+│   ├── errors.py                     # Controlled app error types (ValidationError/FileError)
 │   ├── formatters.py                 # Output formatting helpers (money, tables, CLI/report strings)
 │   ├── logger.py                     # Central logging setup (console + rotating file) + env initializer
 │   ├── main.py                       # Entry point: menu + safe interactive loop + routes args to CLI

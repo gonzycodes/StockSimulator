@@ -21,6 +21,7 @@ class Snapshot:
     Captures the portfolio state immediately after a successful trade
     Stored as one row in snapshots.csv
     """
+
     timestamp: str
     event: str
     ticker: str
@@ -47,7 +48,9 @@ class SnapshotStore:
     - Easy pandas/matplotlib import
     """
 
-    def __init__(self, path: Optional[Path] = None, clock: Optional[Clock] = None) -> None:
+    def __init__(
+        self, path: Optional[Path] = None, clock: Optional[Clock] = None
+    ) -> None:
         self.path = path or SNAPSHOTS_FILE
         self.clock: Clock = clock or (lambda: datetime.now(timezone.utc))
 

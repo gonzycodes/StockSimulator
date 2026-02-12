@@ -105,7 +105,9 @@ class TransactionManager:
 
         # mutate after all checks => atomic on expected failures
         self.portfolio.cash -= total_cost
-        self.portfolio.holdings[clean_ticker] = self.portfolio.holdings.get(clean_ticker, 0.0) + qty
+        self.portfolio.holdings[clean_ticker] = (
+            self.portfolio.holdings.get(clean_ticker, 0.0) + qty
+        )
 
         if self.snapshot_store:
             holdings_value = self.portfolio.holdings.get(clean_ticker, 0.0) * price
@@ -149,8 +151,7 @@ class TransactionManager:
         owned = self.portfolio.holdings.get(clean_ticker, 0.0)
         if owned < qty:
             raise InsufficientHoldingsError(
-                f"Not enough shares to sell {qty} of {clean_ticker}. "
-                f"Owned {owned}."
+                f"Not enough shares to sell {qty} of {clean_ticker}. Owned {owned}."
             )
 
         price = self._get_price(clean_ticker)
@@ -213,7 +214,9 @@ class TransactionManager:
             is_open = bool(self.market_open_check(ticker))
         except Exception as exc:
             # Fail-open to avoid random blocking if check fails
-            self.log.warning("Market open check failed for %s: %s", ticker, exc, exc_info=True)
+            self.log.warning(
+                "Market open check failed for %s: %s", ticker, exc, exc_info=True
+            )
             return
 
         if not is_open:
@@ -236,16 +239,24 @@ class TransactionManager:
         try:
             price = self.price_provider(ticker)
         except QuoteFetchError as exc:
-            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+            raise PriceFetchError(
+                f"Could not fetch latest price for '{ticker}'. ({exc})"
+            ) from exc
         except Exception as exc:
-            raise PriceFetchError(f"Could not fetch latest price for '{ticker}'. ({exc})") from exc
+            raise PriceFetchError(
+                f"Could not fetch latest price for '{ticker}'. ({exc})"
+            ) from exc
 
         if not isinstance(price, (int, float)):
-            raise PriceFetchError(f"Price provider returned non-numeric price for '{ticker}'.")
+            raise PriceFetchError(
+                f"Price provider returned non-numeric price for '{ticker}'."
+            )
 
         price_f = float(price)
         if price_f <= 0:
-            raise PriceFetchError(f"Price provider returned invalid price {price_f} for '{ticker}'.")
+            raise PriceFetchError(
+                f"Price provider returned invalid price {price_f} for '{ticker}'."
+            )
 
         return price_f
 

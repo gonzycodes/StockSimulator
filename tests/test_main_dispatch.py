@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
 
 from src.errors import FileError
 from src.main import SimDeps, SimState, dispatch_line, safe_dispatch

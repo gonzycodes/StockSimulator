@@ -80,17 +80,25 @@ def _print_quote(ticker: str, quote) -> None:
     local_ts = quote.timestamp.astimezone()
     ts_str = local_ts.strftime("%Y-%m-%d %H:%M:%S %Z")
 
-    name_part = f" ({quote.company_name})" if getattr(quote, "company_name", None) else ""
+    name_part = (
+        f" ({quote.company_name})" if getattr(quote, "company_name", None) else ""
+    )
 
     price_sek_val = getattr(quote, "price_sek", None)
     if price_sek_val is not None:
         price_sek = f"{float(price_sek_val):.2f}"
         fx_pair = getattr(quote, "fx_pair", None)
         fx_rate = getattr(quote, "fx_rate_to_sek", None)
-        fx_part = f" (FX: {fx_pair} {float(fx_rate):.4f})" if fx_pair and fx_rate else ""
-        print(f"{ticker}{name_part} {price_native} {currency} | {price_sek} SEK (Fetched at: {ts_str}){fx_part}")
+        fx_part = (
+            f" (FX: {fx_pair} {float(fx_rate):.4f})" if fx_pair and fx_rate else ""
+        )
+        print(
+            f"{ticker}{name_part} {price_native} {currency} | {price_sek} SEK (Fetched at: {ts_str}){fx_part}"
+        )
     else:
-        print(f"{ticker}{name_part} {price_native} {currency} | SEK: N/A (Fetched at: {ts_str})")
+        print(
+            f"{ticker}{name_part} {price_native} {currency} | SEK: N/A (Fetched at: {ts_str})"
+        )
 
 
 def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
@@ -106,12 +114,14 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         QuoteFetchError: market data fetch failed.
         Exception: unexpected errors.
     """
+
     def _deps_price_provider(deps: SimDeps):
         def _get_price(ticker: str) -> float:
             quote = deps.fetch_quote(ticker)
             return float(quote.price)
+
         return _get_price
-    
+
     tokens = shlex.split(line)
     if not tokens:
         return True
@@ -145,7 +155,7 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         quote = deps.fetch_quote(ticker)
         _print_quote(ticker, quote)
         return True
-    
+
     if cmd == "buy":
         if len(tokens) != 3:
             raise ValidationError("Usage: buy <TICKER> <QTY>")
@@ -169,7 +179,9 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         deps.save_pf(state.portfolio)
 
         print(f"SUCCESS: Bought {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
-        print(f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {state.portfolio.cash:.2f}")
+        print(
+            f"Cost: {tx.gross_amount:.2f}. New Cash Balance: {state.portfolio.cash:.2f}"
+        )
         return True
 
     if cmd == "sell":
@@ -195,9 +207,11 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
         deps.save_pf(state.portfolio)
 
         print(f"SUCCESS: Sold {tx.quantity} shares of {tx.ticker} at {tx.price:.2f}.")
-        print(f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {state.portfolio.cash:.2f}")
+        print(
+            f"Proceeds: {tx.gross_amount:.2f}. New Cash Balance: {state.portfolio.cash:.2f}"
+        )
         return True
-    
+
     if cmd == "report":
         if len(tokens) not in {1, 2}:
             raise ValidationError("Usage: report [N]")
@@ -207,7 +221,9 @@ def dispatch_line(line: str, state: SimState, deps: SimDeps) -> bool:
             try:
                 recent_n = int(tokens[1])
             except ValueError as exc:
-                raise ValidationError("Usage: report [N] (N must be an integer)") from exc
+                raise ValidationError(
+                    "Usage: report [N] (N must be an integer)"
+                ) from exc
 
             if recent_n < 0:
                 raise ValidationError("N must be >= 0.")
@@ -251,7 +267,7 @@ def safe_dispatch(line: str, state: SimState, deps: SimDeps) -> bool:
         else:
             print(f"Market error: {exc}")
         return True
-    
+
     except TransactionError as exc:
         print(f"Transaction error: {exc}")
         return True
@@ -270,7 +286,9 @@ def run_simulation() -> None:
     errors are logged with stacktrace while the loop continues.
     """
     print("\n--- Stock Simulator ---")
-    print("Type 'help' or '?' for commands. Type 'exit' or 'quit' to return to the main menu.\n")
+    print(
+        "Type 'help' or '?' for commands. Type 'exit' or 'quit' to return to the main menu.\n"
+    )
 
     deps = SimDeps()
 
@@ -342,6 +360,7 @@ def main() -> int:
     try:
         if len(sys.argv) > 1:
             from src.cli import main as cli_main
+
             return int(cli_main(sys.argv[1:]))
 
         main_menu()

@@ -12,7 +12,7 @@ def normalize_ticker(raw_ticker: str) -> str:
     """
     if not raw_ticker:
         return ""
-    
+
     return raw_ticker.strip().upper()
 
 
@@ -22,10 +22,10 @@ def validate_ticker(ticker: str) -> str:
     Returns the clean ticker or raises ValidationError.
     """
     clean_ticker = normalize_ticker(ticker)
-    
+
     if not clean_ticker:
         raise ValidationError("Ticker symbol cannot be empty.")
-    
+
     return clean_ticker
 
 
@@ -38,11 +38,10 @@ def validate_positive_float(raw_value: str) -> float:
         value = float(raw_value)
     except ValueError:
         raise ValidationError(f"Value '{raw_value}' is not a valid number.")
-    
+
     if value <= 0:
         raise ValidationError(f"Value '{raw_value}' must be greater than zero.")
-    
-    
+
     return value
 
 

@@ -14,6 +14,16 @@ import shutil
 import tempfile
 from pathlib import Path
 
+# --- Silence app logging during pytest --------------------------------------
+
+# Flag so the application knows it is running under tests
+os.environ.setdefault("STOCKSIM_TESTING", "1")
+
+# Disable default file logging (logs/app.log) during tests
+# (individual tests can still pass log_file explicitly)
+os.environ.setdefault("LOG_FILE", "")
+
+
 # --- Redirect data I/O during tests -----------------------------------------
 
 DATA_DIR_ENV = "STOCKSIM_DATA_DIR"
@@ -27,7 +37,12 @@ if DATA_DIR_ENV not in os.environ:
     os.environ[DATA_DIR_ENV] = str(_temp_data_dir)
 
 
-def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
+def pytest_sessionfinish(session, exitstatus):
     """Cleanup temp data directory created for this pytest session."""
+    _ = (session, exitstatus)
     if _created_temp_data_dir and _temp_data_dir:
         shutil.rmtree(_temp_data_dir, ignore_errors=True)
+
+
+# vulture: pytest hooks are discovered by name, not by direct calls
+_ = pytest_sessionfinish

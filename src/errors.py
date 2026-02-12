@@ -16,7 +16,3 @@ class ValidationError(ValueError):
 
 class FileError(RuntimeError):
     """Raised when reading/writing local files fails."""
-
-
-class DataFetchError(RuntimeError):
-    """Raised when external market data cannot be fetched."""
