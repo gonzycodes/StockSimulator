@@ -433,7 +433,21 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 - Fix PRs: timezone-aware UTC timestamps *(PR #28)*; unify interactive buy/sell via `TransactionManager` *(PR #29)*; prevent pytest from writing to repo `data/` *(PR #37)*
 - Project polish/tooling: `ruff` (lint/format), `pytest` + `pytest-cov` (tests/coverage), `vulture` (dead code scan), `pip-audit` (dependency vulnerability check)
 
-**David**
+**David (Tech Lead)**
+- TR-213 Transaction Manager:
+  Implemented core transaction handling logic for buy/sell flows, including validation, error handling and portfolio integration.
+  Modules: `src/transaction_manager.py`, `tests/test_transaction_manager.py`
+
+- TR-106 GitHub Action: run pytest on push/PR:
+  Implemented CI pipeline using GitHub Actions to automatically install dependencies and run pytest on push and pull_request. Ensured failing tests block merge and passing tests show green check in PR.
+  Modules: `requirements.txt`, `pytest.ini`
+
+- TR-241 Analytics (pandas): calculate P/L (realized + unrealized):
+  Implemented analytics logic using pandas to compute portfolio profit & loss, including both realized and unrealized P/L based on current market prices.
+  Modules: `src/analytics.py`, `tests/test_analytics.py`
+
+- Presentation:
+  Created the group’s Google Slides presentation used for the product pitch.
 
 **Anton**
 - TR-235 CLI: “save/load” (save/load portfolio)
