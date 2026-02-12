@@ -363,6 +363,7 @@ StockSimulator/
 │   ├── stock_api.py                  # Test/dev utility for plotting snapshot data (chart helper)
 │   ├── test_assets.py                # Tests asset/domain objects
 │   ├── test_cli_quote.py             # CLI quote command tests (output/behavior)
+│   ├── test_cli_smoke.py             # CLI smoke test (basic end-to-end command sanity check)
 │   ├── test_formatters.py            # Tests output formatting helpers
 │   ├── test_logger.py                # Tests logging init + idempotency + log file creation
 │   ├── test_main_dispatch.py         # Tests main routing/dispatch (menu/args → CLI actions)
@@ -380,6 +381,7 @@ StockSimulator/
 ├── index.html                        # Web UI entry point (loads css/js)
 ├── pytest.ini                        # Pytest configuration
 ├── README.md                         # Project documentation
+├── requirements-dev.txt              # Dev dependencies (linting, security, testing tools)
 └── requirements.txt                  # Python dependencies (pip install -r requirements.txt)
 ```
 
@@ -428,7 +430,8 @@ Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request
 - `src/reporting.py` — “today’s trading” report (summary, trades, P/L) *(TR-244)*
 - `src/logger.py` — logging setup (console + file, trade logging) *(TR-104)*
 - `tests/` — test: cannot sell more than holdings *(TR-252)*
-- Fixes: timezone-aware UTC timestamps *(PR #28)*; prevent pytest writing to repo `data/` *(PR #37)*
+- Fix PRs: timezone-aware UTC timestamps *(PR #28)*; unify interactive buy/sell via `TransactionManager` *(PR #29)*; prevent pytest from writing to repo `data/` *(PR #37)*
+- Project polish/tooling: `ruff` (lint/format), `pytest` + `pytest-cov` (tests/coverage), `vulture` (dead code scan), `pip-audit` (dependency vulnerability check)
 
 **David**
 
