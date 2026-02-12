@@ -1,51 +1,18 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 <a id="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-
-
-
 
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="docs/stocksimulator_logo.png" alt="StockSimulator" width="420" />
   </a>
 
-  <h3 align="center">Best-README-Template</h3>
+  <h3 align="center">Stock Simulator</h3>
 
   <p align="center">
-    An awesome README template to jumpstart your projects!
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/othneildrew/Best-README-Template">View Demo</a>
-    &middot;
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
-  </p>
+    <p><em>Learn investing — without risking</em></p>
+    Probably the second best stock-trading simulator out there!
+    </p>
 </div>
-
-
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -60,228 +27,528 @@
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
         <li><a href="#installation">Installation</a></li>
+        <li><a href="#common-commands">Common commands</a></li>
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+      <ul>
+        <li><a href="#cli-mode-(single-command)">CLI mode (single command)</a></li>
+        <li><a href="#portfolio-command">Portfolio command</a></li>
+      </ul>
+    <li><a href="#tests">Tests</a></li>
+    <li><a href="#error-handling">Error handling</a></li>
+    <li><a href="#snapshots">Snapshots</a></li>
+    <li><a href="#continuous-integration-(github-actions)">Continuous Integration (GitHub Actions)</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#project-structure">Project Structure</a></li>
+    <li><a href="#who-did-what">Who did what</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
+
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
-
-There are many great README templates available on GitHub; however, I didn't find one that really suited my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need -- I think this is it.
-
-Here's why:
-* Your time should be focused on creating something amazing. A project that solves a problem and helps others
-* You shouldn't be doing the same tasks over and over like creating a README from scratch
-* You should implement DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue. Thanks to all the people have contributed to expanding this template!
-
-Use the `BLANK_README.md` to get started.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
+StockSimulator is a Python-based trading simulator where users receive a virtual budget (e.g., 100,000 SEK) and can buy/sell stocks or cryptocurrencies using real market data. The project is designed to demonstrate object-oriented programming, API integration, data analysis, and visualization.
 
 ### Built With
 
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+**Backend**
+* [![Python][Python]][Python-url]
+* [![Flask][Flask]][Flask-url]
+* [![Flask-CORS][Flask-CORS]][Flask-CORS-url]
 
+**Data & Analytics**
+* [![pandas][pandas]][pandas-url]
+* [![Matplotlib][Matplotlib]][Matplotlib-url]
+* [![yfinance][yfinance]][yfinance-url]
+* [![pytz][pytz]][pytz-url]
+
+**Quality**
+* [![pytest][pytest]][pytest-url]
+
+**Frontend**
+* [![HTML5][HTML5]][HTML5-url]
+* [![CSS3][CSS3]][CSS3-url]
+* [![JavaScript][JavaScript]][JavaScript-url]
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
 <!-- GETTING STARTED -->
+
 ## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
 
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. **Clone the Repo**
+
    ```sh
-   git clone https://github.com/github_username/repo_name.git
+   git clone <url>
+   cd <project_map>
    ```
-3. Install NPM packages
+
+2. **Create virtual environment**
+   Windows:
+
    ```sh
-   npm install
+   python -m venv .venv
+   source .venv\Scripts\activate
    ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
+
+   MacOS/Linux:
+
    ```sh
-   git remote set-url origin github_username/repo_name
-   git remote -v # confirm the changes
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
+
+   When venv is activated you will see (venv) in the prompt.
+
+3. **Install dependencies**
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+### Common commands
+
+Run the web based mode with graph
+```bash
+start index.html
+python api_server.py
+```
+
+
+Run the app (menu):
+
+```bash
+python -m src.main
+```
+
+Run a CLI command:
+
+```bash
+python -m src.main quote AAPL
+python -m src.main buy AAPL 2
+```
+
+Run tests:
+Run a CLI command:
+
+```bash
+pytest -q
+```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- USAGE EXAMPLES -->
+
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+The app can run in three modes:
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+1. Interactive mode (menu + safe REPL loop)
+2. CLI mode (single command via argparse)
+3. Web based mode with graph
+
+### Interactive mode (recommended)
+
+From the project root:
+
+```bash
+python -m src.main
+```
+
+Inside the simulation:
+
+- `help` or `?` shows available commands
+- empty input does nothing (new prompt)
+- unknown commands show a hint ("Type 'help' ...")
+
+Example commands:
+
+- `quote AAPL`
+- `buy AAPL 5`
+- `sell AAPL 2`
+- `portfolio`
+- `exit`
+
+### CLI mode (single command)
+
+You can run CLI commands either via the main entrypoint (recommended):
+
+```bash
+python -m src.main quote AAPL
+python -m src.main buy AAPL 5
+python -m src.main sell AAPL 2
+```
+
+Or directly via the CLI module:
+
+```bash
+python -m src.cli quote AAPL
+python -m src.cli sell AAPL 2
+python -m src.cli save
+python -m src.cli load
+```
+
+Optional log level:
+
+```bash
+python -m src.main --log-level DEBUG quote AAPL
+```
+
+### Portfolio command
+
+Show current portfolio status including cash, holdings, and total value.
+
+```bash
+python -m src.cli portfolio
+```
+
+<!-- ANALYTICS -->
+
+### Analytics (Profit & Loss)
+
+The analytics module calculates Profit/Loss (P/L) using a simple **average cost model**.
+
+- **Realized P/L**: profit or loss from sold positions  
+- **Unrealized P/L**: (latest price − average cost) × remaining quantity  
+- **Total P/L**: realized + unrealized  
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- TESTS -->
 
+## Tests
+
+The project includes automated tests using **PyTest**.
+
+### Running the tests
+
+From the project root (`StockSimulator/`), with your virtual environment active:
+
+```bash
+pytest
+```
+
+or with more detailed output:
+
+```bash
+pytest -v
+```
+run a specific file:
+
+```bash
+pytest tests/test_transaction_manager.py
+```
+
+### Verification
+
+The installation and run instructions have been tested on a fresh installation
+using a clean virtual environment.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- ERROR HANDLING -->
+
+## Error Handling
+
+The interactive simulation loop is designed to be stable and never crash on expected errors:
+
+- **Input/validation errors** are caught and shown as a friendly message.
+- **File errors** (e.g. unreadable or unwritable portfolio JSON) are caught and shown as a friendly message.
+- **Market/API errors** when fetching quotes are caught and shown as a friendly message.
+- For **unexpected exceptions**, the app logs a full stacktrace (ERROR) and prints:
+  `Unexpected error occurred.`
+
+### Transaction history
+
+All buy and sell history saves automatically in  
+`data/transactions.json` (JSON-list with append).
+
+Example:
+
+```json
+[
+  {
+    "timestamp": "2026-02-03T13:45:12Z",
+    "side": "BUY",
+    "ticker": "ERIC-B.ST",
+    "quantity": 20.0,
+    "price": 95.0,
+    "total": 1900.0,
+    "cash_after": 8100.0
+  }
+]
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Snapshots
+After each successful trade (buy/sell), a snapshot is appended to `data/snapshots.csv`.
+
+## Continuous Integration (GitHub Actions)
+This project uses GitHub Actions for Continuous Integration.
+On every push and pull request, an automated pipeline is executed that:
+- sets up Python
+- installs dependencies from requirements.txt
+- runs the full pytest test suite
+
+A pull request can only be merged when the CI pipeline passes successfully.
+The workflow definition can be found here:
+`.github/workflows/python-tests.yml`
+This ensures that the project remains stable and that all tests pass before changes are merged.
 
 <!-- ROADMAP -->
+
 ## Roadmap
 
-- [x] Add Changelog
-- [x] Add back to top links
-- [ ] Add Additional Templates w/ Examples
-- [ ] Add "components" document to easily copy & paste sections of the readme
-- [ ] Multi-language Support
-    - [ ] Chinese
-    - [ ] Spanish
+TBA
 
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
+<!-- Project Structure -->
+
+## Project Structure
+
+```bash
+StockSimulator/
+├── css/                              # Frontend styles
+│   └── styles.css                    # Main stylesheet
+│
+├── data/                             # Local app data (created/updated during usage)
+│   ├── __init__.py                   # Allows data/ to be imported in tests/utilities
+│   ├── portfolio.json                # Saved portfolio state
+│   ├── snapshots.csv                 # Portfolio value history
+│   ├── transactions.json             # Transaction history
+│   └── yfinance_fetcher.py           # Legacy/alt Yahoo Finance fetch helper (used in tests)
+│
+├── docs/                             # Documentation assets
+│   └── stocksimulator_logo.jpg       # Project logo used in README
+│
+├── docs/trello                       # Trello documentation (screenshots / planning exports)
+│
+├── js/                               # Frontend scripts
+│   └── app.js                        # UI logic (actions, API calls, rendering)
+│
+├── src/                              # Core simulator modules
+│   ├── __init__.py                   # Marks src as a package
+│   ├── analytics.py                  # Performance calculations (P/L, summaries)
+│   ├── assets.py                     # Asset/Stock domain objects (ticker/name/price metadata)
+│   ├── cli.py                        # Argparse CLI commands (quote/sell) + portfolio JSON IO helpers
+│   ├── config.py                     # Centralized paths (PROJECT_ROOT/DATA_DIR/SRC_DIR/TESTS_DIR)
+│   ├── data_fetcher.py               # Market data layer (yfinance) + Quote model + QuoteFetchError codes
+│   ├── errors.py                     # Controlled app error types (ValidationError/FileError)
+│   ├── formatters.py                 # Output formatting helpers (money, tables, CLI/report strings)
+│   ├── logger.py                     # Central logging setup (console + rotating file) + env initializer
+│   ├── main.py                       # Entry point: menu + safe interactive loop + routes args to CLI
+│   ├── portfolio.py                  # Portfolio domain model (cash/holdings + buy/sell + total_value)
+│   ├── reporting.py                  # Report generation (human-readable summaries to file/console)
+│   ├── snapshot_store.py             # Snapshot persistence (append/read snapshots.csv)
+│   ├── transaction_logger.py         # Transaction persistence (append/read transactions.json)
+│   ├── transaction_manager.py        # TransactionManager + domain exceptions + Transaction result model
+│   ├── transactions.py               # Shared transaction types/models/helpers (side, totals, timestamps)
+│   └── validators.py                 # Central input validation logic (tickers/amounts)
+│
+├── src/models                        # Domain models (typed data structures)
+│   └── transaction.py                # Transaction model (timestamp, side, ticker, qty, price, totals)
+│
+├── tests/                            # Automated test suite (Pytest)
+│   ├── conftest.py                   # Shared fixtures and test setup
+│   ├── test_analytics.py             # Tests analytics calculations (P/L, summaries)
+│   ├── stock_api.py                  # Test/dev utility for plotting snapshot data (chart helper)
+│   ├── test_assets.py                # Tests asset/domain objects
+│   ├── test_cli_quote.py             # CLI quote command tests (output/behavior)
+│   ├── test_cli_smoke.py             # CLI smoke test (basic end-to-end command sanity check)
+│   ├── test_formatters.py            # Tests output formatting helpers
+│   ├── test_logger.py                # Tests logging init + idempotency + log file creation
+│   ├── test_main_dispatch.py         # Tests main routing/dispatch (menu/args → CLI actions)
+│   ├── test_market_data.py           # Tests yfinance fetching + fetch_latest_quote error codes
+│   ├── test_mock_prices.py           # Tests offline/mock pricing fallback behavior
+│   ├── test_portfolio_persistence.py # Tests save/load portfolio JSON + file error handling
+│   ├── test_portfolio.py             # Tests Portfolio behaviors (cash/holdings operations)
+│   ├── test_report.py                # Tests report generation/output content
+│   ├── test_snapshots_integration.py # Integration tests for snapshot writing after trades
+│   ├── test_transaction_logger.py    # Tests transaction history persistence and structure
+│   ├── test_transaction_manager.py   # Tests TransactionManager + domain validation/exceptions
+│   └── test_validators.py            # Tests validators (tickers, amounts, edge cases)
+│
+├── api_server.py                     # Local backend server for the web UI (HTTP API endpoints)
+├── index.html                        # Web UI entry point (loads css/js)
+├── pytest.ini                        # Pytest configuration
+├── README.md                         # Project documentation
+├── requirements-dev.txt              # Dev dependencies (linting, security, testing tools)
+└── requirements.txt                  # Python dependencies (pip install -r requirements.txt)
+```
+
+## Core Classes
+
+- **Portfolio** (src/portfolio.py)  
+  Represents the portfolio state including cash balance and holdings.
+
+- **TransactionManager** (src/transaction_manager.py)  
+  Handles buy and sell operations, validation, and transaction side effects.
+
+- **SnapshotStore** (src/snapshot_store.py)  
+  Persists portfolio snapshots after each trade.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
-<!-- CONTRIBUTING -->
-## Contributing
+<!-- CONTRIBUTING / WHO DID WHAT -->
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+## Who did what
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+Updated continuously. Primary sources are Trello cards (TR-xxx) and pull request history.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+**Nahuel**
 
-### Top contributors:
+- TR-204: Cache and mock data fallback when market API fails  
+  Modules: src/data_fetcher.py, src/config.py, data/mock_prices.json, related tests
+- TR-242: Portfolio snapshots saved after each trade  
+  Modules: src/snapshot_store.py, integration with TransactionManager, snapshot CSV persistence
+- TR-253: Pytest JSON save and load roundtrip for portfolio persistence  
+  Modules: portfolio save/load logic, tests using tmp_path
+- TR-234: CLI command `portfolio` showing cash, holdings, and total value  
+  Modules: src/cli.py, portfolio formatting and total value calculation
+- TR-212: Core Portfolio class (cash, holdings, total_value)  
+  Modules: src/portfolio.py
+- TR-251: Pytest coverage for buy behavior (cash decreases, holdings increase)  
+  Modules: tests/test_transaction_manager.py
+- TR-263: README test instructions and CI/CD documentation  
+  Documentation: README sections for pytest usage and GitHub Actions CI pipeline
 
+**Nicklas (Scrum Master)**
+- `src/transactions.py` — `TransactionManager` (buy/sell flow) *(TR-213, PR #29)*
+- `src/cli.py` — robust error handling + `quote <TICKER>` *(TR-236, TR-231)*
+- `src/portfolio.py` — save portfolio to JSON *(TR-221)*
+- `src/reporting.py` — “today’s trading” report (summary, trades, P/L) *(TR-244)*
+- `src/logger.py` — logging setup (console + file, trade logging) *(TR-104)*
+- `tests/` — test: cannot sell more than holdings *(TR-252)*
+- Fix PRs: timezone-aware UTC timestamps *(PR #28)*; unify interactive buy/sell via `TransactionManager` *(PR #29)*; prevent pytest from writing to repo `data/` *(PR #37)*
+- Project polish/tooling: `ruff` (lint/format), `pytest` + `pytest-cov` (tests/coverage), `vulture` (dead code scan), `pip-audit` (dependency vulnerability check)
 
+**David (Tech Lead)**
+- TR-213 Transaction Manager:
+  Implemented core transaction handling logic for buy/sell flows, including validation, error handling and portfolio integration.
+  Modules: `src/transaction_manager.py`, `tests/test_transaction_manager.py`
+
+- TR-106 GitHub Action: run pytest on push/PR:
+  Implemented CI pipeline using GitHub Actions to automatically install dependencies and run pytest on push and pull_request. Ensured failing tests block merge and passing tests show green check in PR.
+  Modules: `requirements.txt`, `pytest.ini`
+
+- TR-241 Analytics (pandas): calculate P/L (realized + unrealized):
+  Implemented analytics logic using pandas to compute portfolio profit & loss, including both realized and unrealized P/L based on current market prices.
+  Modules: `src/analytics.py`, `tests/test_analytics.py`
+
+- Presentation:
+  Created the group’s Google Slides presentation used for the product pitch.
+
+**Anton**
+- TR-235 CLI: “save/load” (save/load portfolio)
+  Implemented manual persistence commands save and load in the CLI to allow users to snapshot or restore their session state. Updated argument parser. `src/cli.py`, `README.md`
+- TR-254 Pytest: test input validation (invalid quantity/ticker)
+  Created comprehensive unit tests for validate_ticker (normalization) and validate_positive_float (numeric checks) to ensure robust error handling. `tests/test_validators.py`
+- TR-232 CLI: command “buy <TICKER> <QUANTITY>”
+  Implemented buy command logic with balance checks and autosave functionality. Resolved merge conflicts between local feature branch and dev. `src/cli.py`, `src/portfolio.py`, `README.md`
+- TR-214 Input validation: central validator (e.g. amount > 0, integer/float, ticker format)
+  Implemented centralized validation logic to handle ticker normalization (stripping/uppercasing) and numeric constraints (positive floats). `src/validators.py`
+- TR-233 CLI: command “sell <TICKER> <QUANTITY>”
+  Implemented sell command logic, ensuring users own the asset and have sufficient quantity before executing the trade. `src/cli.py`, `src/portfolio.py`
+- TR-105 Minimal CLI loop: start/exit + menu skeleton
+  Set up the main application entry point using argparse to dispatch commands and handle the primary execution loop. `src/main.py`, `src/cli.py`
+- TR-103 Base config: `config.py` + pathlib for paths
+  Established centralized configuration for file paths (like DATA_DIR) using pathlib to ensure cross-platform compatibility. `src/config.py`
+- TR-211 Class: Asset/Stock (ticker, name, last_price, updated_at)
+  Implemented core domain Asset dataclass with built-in validation and serialization methods (to_dict/from_dict) to structure market data. `src/assets.py`, `tests/test_assets.py`
+  
+**Alex**
+- TR-102 venv + requirements.txt (yfinance,  pytest)
+  README.md, requirements.txt
+- TR-201 Data Fetcher: fetch current price for ticker via yfinance
+  data/ __init__.py, yfinance_fetcher.py
+  tests/ test_market_data.py
+  pytest.ini
+- TR-202 Data Fetcher: handle errors (invalid ticker, network error) + clear error messages
+  src/data_fetcher.py
+  tests/test_market_data.py
+- TR-203 Exchange times (datetime): Blocks if the market is closed (different depending on the market)
+  src/data_fetcher.py
+  tests/test_transaction_manager.py
+- TR-222 Robust loading of portfolio from JSON + autosave after every buy/sell
+  src/portfolio.py
+  tests/test_transaction_manager
+- TR-223 Added transactions logging with failsafe
+  src/models/transaction.py
+  src/cli.py, transaction_logger.py, transaction_manager.py
+  tests/test_portfolio.py, test_transaction_logger.py, test_transaction_manager.py
+- TR-243 TradingView Charts: Real-time visualization of portfolio with interactive chart graph
+  css/styles.css
+  js/app.js
+  tests/stock_sim_chart.py, test_transaction_logger.py, test_transaction_manager.py
+  api_server.py
+  index.html
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
+    
 
 <!-- LICENSE -->
+
 ## License
 
-Distributed under the Unlicense License. See `LICENSE.txt` for more information.
+TBA
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- CONTACT -->
+
 ## Contact
 
-Your Name - [@your_twitter](https://twitter.com/your_username) - email@example.com
-
-Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
-* [Choose an Open Source License](https://choosealicense.com)
-* [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
+| Name             | GitHub
+| ---------------- | ---------------------------------------------------------- |
+| Nahuel           | [@gonzycodes](https://https://github.com/gonzycodes) |
+| Nicklas          | [@nicklasskoglund](https://github.com/nicklasskoglund) |
+| Alex             | [@Zaitex89](https://https://github.com/Zaitex89) |
+| Anton            | [@Aeontonn](https://github.com/Aeontonn) |
+| David            | [@davidfjellstrom](https://github.com/davidfjellstrom) |
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
-``` ## Map Structure
-stocksimulator/
-│
-├── data/                 # Stores portfolio files (JSON) and logs
-├── src/
-│   ├── __init__.py
-│   ├── main.py           # Entry point (CLI Menu)
-│   ├── market.py         # Fetches market data from Yahoo Finance (API)
-│   ├── portfolio.py      # Core logic for cash, holdings, and trades
-│   ├── storage.py        # Handles data persistence (Save/Load JSON)
-│   ├── analysis.py       # Analytics using Pandas (Calculates Profit/Loss)
-│   └── utils.py          # Utility functions (Input validation, etc.)
-├── tests/
-│   ├── test_portfolio.py
-│   ├── test_market.py
-│   └── ...
-├── requirements.txt      # List of dependencies
-├── README.md             # Project documentation
-└── .github/workflows/python-app.yml  # CI/CD configuration
-```
+[Python]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[Python-url]: https://www.python.org/
+
+[Flask]: https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white
+[Flask-url]: https://flask.palletsprojects.com/
+
+[Flask-CORS]: https://img.shields.io/badge/Flask--CORS-000000?style=for-the-badge&logo=flask&logoColor=white
+[Flask-CORS-url]: https://pypi.org/project/Flask-Cors/
+
+[pandas]: https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white
+[pandas-url]: https://pandas.pydata.org/
+
+[Matplotlib]: https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white
+[Matplotlib-url]: https://matplotlib.org/
+
+[yfinance]: https://img.shields.io/badge/yfinance-000000?style=for-the-badge&logo=yahoo&logoColor=white
+[yfinance-url]: https://pypi.org/project/yfinance/
+
+[pytz]: https://img.shields.io/badge/pytz-1F6FEB?style=for-the-badge&logo=python&logoColor=white
+[pytz-url]: https://pypi.org/project/pytz/
+
+[pytest]: https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white
+[pytest-url]: https://docs.pytest.org/
+
+[HTML5]: https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white
+[HTML5-url]: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5
+
+[CSS3]: https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white
+[CSS3-url]: https://developer.mozilla.org/en-US/docs/Web/CSS
+
+[JavaScript]: https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=000
+[JavaScript-url]: https://developer.mozilla.org/en-US/docs/Web/JavaScript

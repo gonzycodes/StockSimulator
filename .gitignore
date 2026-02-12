@@ -2,6 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -214,3 +215,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# /logs/
+logs/
+*.log
+
+# /data/
+data/portfolio.json
+*.json
+data/snapshots.csv
+data/report*.txt
